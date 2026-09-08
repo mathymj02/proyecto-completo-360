@@ -22,11 +22,12 @@ export const environment = {
   // Application ID URI real: api://0d5904de-.../desarrollo
   // Nombre del scope real: leer_y_escribir (no "write-read")
   apiScopes: ['api://0d5904de-0d7a-474d-ba0a-d8a8ea6d14f8/desarrollo/leer_y_escribir'],
+  apiUrls: {
+    auth: 'https://3jxo8ng50g.execute-api.us-east-1.amazonaws.com/api/v1/auth',
+    catalogo: 'https://3jxo8ng50g.execute-api.us-east-1.amazonaws.com/api/v1/catalogo',
+    carrito: 'https://3jxo8ng50g.execute-api.us-east-1.amazonaws.com/api/v1/carritos',
+  },
 
   // URLs de tus 3 microservicios Spring Boot corriendo en local.
-  apiUrls: {
-    auth: 'http://localhost:8083/api/v1/auth',
-    catalogo: 'http://localhost:8081/api/v1/catalogo',
-    carrito: 'http://localhost:8082/api/v1/carritos',
-  },
+
 };
