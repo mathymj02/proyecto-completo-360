@@ -8,21 +8,17 @@ export const environment = {
   production: true,
 
   azureAd: {
-    clientId: 'TU-CLIENT-ID-AQUI',
+    clientId: '0d5904de-0d7a-474d-ba0a-d8a8ea6d14f8',
     authority: 'https://login.microsoftonline.com/common',
-    // Cambiar por la URL de tu API Gateway + stage donde sirvas el frontend,
-    // o por el dominio donde despliegues el build de Angular.
-    redirectUri: 'https://TU-DOMINIO-DE-PRODUCCION/',
-    postLogoutRedirectUri: 'https://TU-DOMINIO-DE-PRODUCCION/',
+    redirectUri: 'https://main.diml48c4gyhqd.amplifyapp.com/',
+    postLogoutRedirectUri: 'https://main.diml48c4gyhqd.amplifyapp.com/',
   },
 
-  apiScopes: ['api://TU-CLIENT-ID-AQUI/write-read'],
+  apiScopes: ['api://0d5904de-0d7a-474d-ba0a-d8a8ea6d14f8/desarrollo/leer_y_escribir'],
 
-  // En produccion, las 3 URLs deberian apuntar al MISMO API Gateway
-  // (distintas rutas de un solo dominio), no a puertos sueltos como en local.
   apiUrls: {
-    auth: 'https://TU-API-GATEWAY.execute-api.us-east-1.amazonaws.com/desarrollo/api/v1/auth',
-    catalogo: 'https://TU-API-GATEWAY.execute-api.us-east-1.amazonaws.com/desarrollo/api/v1/catalogo',
-    carrito: 'https://TU-API-GATEWAY.execute-api.us-east-1.amazonaws.com/desarrollo/api/v1/carritos',
+    auth: 'https://3jxo8ng50g.execute-api.us-east-1.amazonaws.com/api/v1/auth',
+    catalogo: 'https://3jxo8ng50g.execute-api.us-east-1.amazonaws.com/api/v1/catalogo',
+    carrito: 'https://3jxo8ng50g.execute-api.us-east-1.amazonaws.com/api/v1/carritos',
   },
 };
