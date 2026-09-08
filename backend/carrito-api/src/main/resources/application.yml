@@ -5,12 +5,10 @@ spring:
   application:
     name: carrito-api
   datasource:
-    # DB_CLOSE_DELAY=-1: evita que H2 borre la base en memoria cuando el
-    # pool de conexiones cierra todas las conexiones inactivas.
-    url: jdbc:h2:mem:carritodb;DB_CLOSE_DELAY=-1
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    url: jdbc:mysql://pedidos360-db.cmce5dstqmg9.us-east-1.rds.amazonaws.com:3306/pedidos360?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: admin
+    password: Ayuwoki15.
   jpa:
     hibernate:
       ddl-auto: update
