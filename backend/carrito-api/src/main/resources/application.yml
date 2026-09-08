@@ -26,7 +26,7 @@ azure:
   issuer-v2: https://login.microsoftonline.com/e5372bf0-c5e3-4286-887c-79069f209c1f/v2.0
 
 cors:
-  allowed-origins: http://localhost:5173,http://localhost:4200,https://z97t6a0hfj.execute-api.us-east-1.amazonaws.com
+  allowed-origins: http://localhost:5173,http://localhost:4200,https://main.diml48c4gyhqd.amplifyapp.com,https://z97t6a0hfj.execute-api.us-east-1.amazonaws.com
 
 # TEMPORAL: para ver el motivo exacto de un 401 mientras depuramos.
 logging:
