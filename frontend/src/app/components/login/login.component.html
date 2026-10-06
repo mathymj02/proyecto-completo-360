@@ -1,19 +1,76 @@
 <!-- src/app/components/login/login.component.html -->
-<div class="login-container">
-  <h1>Pedidos360</h1>
+<div class="login-wrapper">
+  <div class="glow-sphere sphere-1"></div>
+  <div class="glow-sphere sphere-2"></div>
 
-  <!-- *ngIf con "else" (sintaxis clasica de Angular, disponible aunque
-       tambien exista la nueva @if de Angular 17+ - usamos la clasica aca
-       porque es la que la mayoria de las guias/rubricas de MSAL Angular
-       muestran como referencia). -->
-  <div *ngIf="!nombreUsuario; else logueado">
-    <p>Inicia sesión con tu cuenta de Microsoft para continuar.</p>
-    <button (click)="iniciarSesion()">Iniciar sesión con Microsoft</button>
+  <div class="login-card">
+    <div class="brand-header">
+      <div class="brand-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="9" cy="21" r="1"></circle>
+          <circle cx="20" cy="21" r="1"></circle>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+        </svg>
+      </div>
+      <h1 class="brand-title">Pedidos<span>360</span></h1>
+      <p class="brand-subtitle">Plataforma Cloud Native de E-Commerce & Microservicios</p>
+    </div>
+
+    <div *ngIf="!nombreUsuario; else logueado" class="login-actions">
+      <p class="login-instruction">Selecciona tu método de autenticación:</p>
+
+      <!-- Botón 1: Azure AD (Entra ID) -->
+      <button class="btn-auth btn-azure" (click)="iniciarSesion()">
+        <span class="ms-logo">
+          <span class="ms-box red"></span>
+          <span class="ms-box green"></span>
+          <span class="ms-box blue"></span>
+          <span class="ms-box yellow"></span>
+        </span>
+        <div class="btn-text">
+          <strong>Acceso Corporativo / Institucional</strong>
+          <small>Microsoft Entra ID (Azure AD)</small>
+        </div>
+      </button>
+
+      <!-- Botón 2: AWS Cognito -->
+      <button class="btn-auth btn-cognito" (click)="iniciarSesionCognito()">
+        <span class="aws-icon">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+            <path d="M18.8 15.3c-.3-.2-.7-.2-.9.1-1.3 1.5-3.2 2.4-5.2 2.4-2.8 0-5.3-1.6-6.4-4.1-.2-.4-.6-.6-1-.4-.4.2-.6.6-.4 1 1.4 3.1 4.4 5.1 7.8 5.1 2.5 0 4.8-1.1 6.4-2.9.2-.3.2-.8-.3-1.2zm2.7-3.9l-2.4-1.9c-.3-.2-.7-.1-.9.2-.2.3-.1.7.2.9l1.4 1.1-6.1.1c-4.4 0-8 3.6-8 8 0 .4.3.7.7.7s.7-.3.7-.7c0-3.6 2.9-6.5 6.5-6.5l6.1-.1-1.4 1.1c-.3.2-.3.7-.1.9.1.2.3.2.5.2.2 0 .3-.1.4-.2l2.4-1.9c.3-.2.3-.7 0-1.1z"/>
+          </svg>
+        </span>
+        <div class="btn-text">
+          <strong>Acceso Clientes / Público</strong>
+          <small>Amazon Web Services Cognito</small>
+        </div>
+      </button>
+
+      <div class="security-badge">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+        <span>Protegido con OAuth 2.0 / OIDC & PKCE</span>
+      </div>
+    </div>
+
+    <ng-template #logueado>
+      <div class="user-logged-box">
+        <div class="user-avatar">
+          {{ nombreUsuario?.charAt(0)?.toUpperCase() }}
+        </div>
+        <p class="welcome-text">Bienvenido de vuelta,</p>
+        <h3 class="user-name">{{ nombreUsuario }}</h3>
+        
+        <div class="logged-actions">
+          <button class="btn-primary" (click)="irAlDashboard()">
+            <span>Ir a la Tienda</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+          <button class="btn-secondary" (click)="cerrarSesion()">Cerrar sesión</button>
+        </div>
+      </div>
+    </ng-template>
   </div>
-
-  <ng-template #logueado>
-    <p>Hola, <strong>{{ nombreUsuario }}</strong></p>
-    <button (click)="irAlDashboard()">Ir al Dashboard</button>
-    <button (click)="cerrarSesion()">Cerrar sesión</button>
-  </ng-template>
 </div>

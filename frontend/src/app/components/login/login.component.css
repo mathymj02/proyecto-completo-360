@@ -1,0 +1,230 @@
+﻿.login-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 10%, #1e2640 0%, #0d111a 100%);
+  position: relative;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #fff;
+  padding: 1.5rem;
+}
+
+.glow-sphere {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  opacity: 0.35;
+}
+.sphere-1 {
+  width: 450px;
+  height: 450px;
+  background: #0078d4;
+  top: -100px;
+  left: -100px;
+}
+.sphere-2 {
+  width: 400px;
+  height: 400px;
+  background: #ff9900;
+  bottom: -100px;
+  right: -100px;
+}
+
+.login-card {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  background: rgba(22, 29, 47, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 2.8rem 2.2rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  z-index: 10;
+}
+
+.brand-icon {
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, #0078d4, #00a4ef);
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  box-shadow: 0 10px 20px rgba(0, 120, 212, 0.35);
+}
+
+.brand-title {
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+.brand-title span {
+  color: #00a4ef;
+}
+
+.brand-subtitle {
+  color: #8fa0be;
+  font-size: 0.9rem;
+  margin: 0.5rem 0 2rem;
+}
+
+.login-instruction {
+  color: #c0cadb;
+  font-size: 0.95rem;
+  margin-bottom: 1.2rem;
+}
+
+.login-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.btn-auth {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.9rem 1.2rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: left;
+}
+
+.btn-auth:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+}
+
+.btn-azure:hover {
+  background: rgba(0, 120, 212, 0.15);
+  border-color: #0078d4;
+}
+
+.btn-cognito:hover {
+  background: rgba(255, 153, 0, 0.15);
+  border-color: #ff9900;
+}
+
+.btn-text {
+  display: flex;
+  flex-direction: column;
+}
+.btn-text strong {
+  font-size: 0.95rem;
+}
+.btn-text small {
+  color: #8fa0be;
+  font-size: 0.78rem;
+}
+
+/* Microsoft 4-box Logo */
+.ms-logo {
+  display: grid;
+  grid-template-columns: repeat(2, 9px);
+  grid-gap: 3px;
+  padding: 2px;
+}
+.ms-box {
+  width: 9px;
+  height: 9px;
+}
+.ms-box.red { background: #f25022; }
+.ms-box.green { background: #7fba00; }
+.ms-box.blue { background: #00a4ef; }
+.ms-box.yellow { background: #ffb900; }
+
+.aws-icon {
+  color: #ff9900;
+  display: flex;
+  align-items: center;
+}
+
+.security-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  color: #6b7d99;
+  font-size: 0.75rem;
+}
+
+/* Logged In View */
+.user-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0078d4, #7fba00);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 0.8rem;
+}
+
+.welcome-text {
+  color: #8fa0be;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.user-name {
+  font-size: 1.25rem;
+  margin: 0.2rem 0 1.5rem;
+  color: #fff;
+}
+
+.logged-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.9rem;
+  background: #0078d4;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-primary:hover {
+  background: #0060aa;
+}
+
+.btn-secondary {
+  padding: 0.75rem;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #8fa0be;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}

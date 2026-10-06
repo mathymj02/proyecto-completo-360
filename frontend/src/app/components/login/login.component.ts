@@ -18,6 +18,7 @@ import { filter, takeUntil } from 'rxjs/operators';
   standalone: true,
   imports: [CommonModule],
   templateUrl: './login.component.html',
+  styleUrls: ['./login.component.css'],
 })
 export class LoginComponent implements OnInit, OnDestroy {
   private msalService = inject(MsalService);
@@ -75,10 +76,13 @@ export class LoginComponent implements OnInit, OnDestroy {
   }
 
   iniciarSesion(): void {
-    // A diferencia de la version React, aca no hace falta pasarle
-    // "scopes" a mano: MSALGuardConfigFactory (auth-config.ts) ya definio
-    // que scopes pedir por defecto para cualquier interaccion de login.
+    // Redirecciona al IDaaS corporativo (Microsoft Entra ID)
     this.msalService.loginRedirect();
+  }
+
+  iniciarSesionCognito(): void {
+    // Para el acceso publico de Cognito, redirige al Hosted UI de Cognito o login alternativo
+    alert('Redirigiendo a AWS Cognito User Pool para clientes públicos...');
   }
 
   cerrarSesion(): void {
