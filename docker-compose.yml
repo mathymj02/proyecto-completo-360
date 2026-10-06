@@ -1,6 +1,18 @@
-﻿version: '3.8'
+version: '3.8'
 
 services:
+  # -------------------------------------------------------------
+  # FRONTEND ANGULAR (Servido por Nginx en puerto 80 en la EC2)
+  # -------------------------------------------------------------
+  frontend:
+    build: ./frontend
+    container_name: frontend-pedidos360
+    restart: always
+    ports:
+      - "80:80"
+    networks:
+      - pedidos360-network
+
   # -------------------------------------------------------------
   # BROKER DE MENSAJERÍA ASÍNCRONA: RabbitMQ con Management UI
   # -------------------------------------------------------------
