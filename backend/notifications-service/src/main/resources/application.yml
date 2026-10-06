@@ -1,0 +1,27 @@
+﻿server:
+  port: 8085
+
+spring:
+  application:
+    name: notifications-service
+
+  # RabbitMQ
+  rabbitmq:
+    host: 
+    port: 
+    username: 
+    password: 
+
+  # Configuración SMTP Gmail (Guía Duoc UC)
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: 
+    password: 
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true

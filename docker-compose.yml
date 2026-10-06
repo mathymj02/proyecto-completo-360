@@ -1,0 +1,110 @@
+﻿version: '3.8'
+
+services:
+  # -------------------------------------------------------------
+  # BROKER DE MENSAJERÍA ASÍNCRONA: RabbitMQ con Management UI
+  # -------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: rabbitmq-pedidos360
+    restart: always
+    ports:
+      - "5672:5672"    # Puerto AMQP para comunicación con Spring Boot
+      - "15672:15672"  # Consola Web de Administración (admin / admin123)
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+    networks:
+      - pedidos360-network
+
+  # -------------------------------------------------------------
+  # MICROSERVICIOS BASE
+  # -------------------------------------------------------------
+  catalogo-api:
+    build: ./backend/catalogo-api
+    container_name: catalogo-api
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: admin
+      SPRING_RABBITMQ_PASSWORD: admin123
+    depends_on:
+      - rabbitmq
+    networks:
+      - pedidos360-network
+
+  carrito-api:
+    build: ./backend/carrito-api
+    container_name: carrito-api
+    restart: always
+    ports:
+      - "8082:8082"
+    networks:
+      - pedidos360-network
+
+  auth-api:
+    build: ./backend/auth-api
+    container_name: auth-api
+    restart: always
+    ports:
+      - "8083:8083"
+    networks:
+      - pedidos360-network
+
+  # -------------------------------------------------------------
+  # NUEVOS MICROSERVICIOS DEL ENCARGO
+  # -------------------------------------------------------------
+  orders-service:
+    build: ./backend/orders-service
+    container_name: orders-service
+    restart: always
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: admin
+      SPRING_RABBITMQ_PASSWORD: admin123
+    depends_on:
+      - rabbitmq
+    networks:
+      - pedidos360-network
+
+  notifications-service:
+    build: ./backend/notifications-service
+    container_name: notifications-service
+    restart: always
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: admin
+      SPRING_RABBITMQ_PASSWORD: admin123
+    depends_on:
+      - rabbitmq
+    networks:
+      - pedidos360-network
+
+  envios-service:
+    build: ./backend/envios-service
+    container_name: envios-service
+    restart: always
+    ports:
+      - "8086:8086"
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: admin
+      SPRING_RABBITMQ_PASSWORD: admin123
+    depends_on:
+      - rabbitmq
+    networks:
+      - pedidos360-network
+
+networks:
+  pedidos360-network:
+    driver: bridge

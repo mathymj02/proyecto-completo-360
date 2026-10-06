@@ -30,4 +30,9 @@ public class CatalogoApiApplication {
             }
         };
     }
+
+    @Bean
+    public org.springframework.amqp.support.converter.MessageConverter jsonMessageConverter() {
+        return new org.springframework.amqp.support.converter.Jackson2JsonMessageConverter();
+    }
 }

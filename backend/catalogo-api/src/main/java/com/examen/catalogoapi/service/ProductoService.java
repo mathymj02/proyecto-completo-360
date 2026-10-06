@@ -105,4 +105,15 @@ public class ProductoService {
         Producto existente = buscarPorId(id);
         repository.delete(existente);
     }
+
+    /**
+     * Descuenta stock en la base de datos MySQL al recibir un evento de compra desde RabbitMQ.
+     */
+    public void descontarStock(Long id, int cantidad) {
+        Producto existente = buscarPorId(id);
+        int nuevoStock = Math.max(0, existente.getStock() - cantidad);
+        existente.setStock(nuevoStock);
+        repository.save(existente);
+        System.out.println("[CATALOGO-STOCK] Stock actualizado para '" + existente.getNombre() + "': " + nuevoStock + " unidades.");
+    }
 }
