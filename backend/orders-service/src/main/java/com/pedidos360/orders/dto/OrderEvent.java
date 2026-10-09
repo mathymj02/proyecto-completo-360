@@ -1,4 +1,4 @@
-﻿package com.pedidos360.orders.dto;
+package com.pedidos360.orders.dto;
 
 import java.io.Serializable;
 import java.util.List;

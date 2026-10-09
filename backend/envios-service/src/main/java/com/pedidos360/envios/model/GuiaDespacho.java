@@ -1,4 +1,4 @@
-﻿package com.pedidos360.envios.model;
+package com.pedidos360.envios.model;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;

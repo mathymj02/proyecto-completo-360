@@ -1,4 +1,4 @@
-﻿package com.pedidos360.envios.listener;
+package com.pedidos360.envios.listener;
 
 import com.pedidos360.envios.model.GuiaDespacho;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;

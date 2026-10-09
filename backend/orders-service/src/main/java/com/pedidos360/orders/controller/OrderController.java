@@ -1,4 +1,4 @@
-﻿package com.pedidos360.orders.controller;
+package com.pedidos360.orders.controller;
 
 import com.pedidos360.orders.config.RabbitMQConfig;
 import com.pedidos360.orders.dto.OrderEvent;

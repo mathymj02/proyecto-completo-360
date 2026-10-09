@@ -1,4 +1,4 @@
-﻿package com.pedidos360.envios;
+package com.pedidos360.envios;
 
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;

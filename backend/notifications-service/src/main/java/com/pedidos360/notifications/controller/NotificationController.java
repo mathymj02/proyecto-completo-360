@@ -1,4 +1,4 @@
-﻿package com.pedidos360.notifications.controller;
+package com.pedidos360.notifications.controller;
 
 import com.pedidos360.notifications.service.EmailService;
 import org.springframework.http.ResponseEntity;

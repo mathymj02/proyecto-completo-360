@@ -1,4 +1,4 @@
-﻿package com.examen.catalogoapi.listener;
+package com.examen.catalogoapi.listener;
 
 import com.examen.catalogoapi.service.ProductoService;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;

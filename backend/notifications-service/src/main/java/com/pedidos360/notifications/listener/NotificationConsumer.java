@@ -1,4 +1,4 @@
-﻿package com.pedidos360.notifications.listener;
+package com.pedidos360.notifications.listener;
 
 import com.pedidos360.notifications.service.EmailService;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;

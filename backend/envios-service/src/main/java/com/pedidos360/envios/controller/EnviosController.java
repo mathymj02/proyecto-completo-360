@@ -1,4 +1,4 @@
-﻿package com.pedidos360.envios.controller;
+package com.pedidos360.envios.controller;
 
 import com.pedidos360.envios.listener.EnviosConsumer;
 import com.pedidos360.envios.model.GuiaDespacho;
