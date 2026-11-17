@@ -11,6 +11,7 @@ import { MsalService } from '@azure/msal-angular';
 import { AuthApiService } from '../../services/auth-api.service';
 import { CatalogoService, Producto } from '../../services/catalogo.service';
 import { CarritoService } from '../../services/carrito.service';
+import { OrdersService } from '../../services/orders.service';
 import { decodeJwtPayload, extraerPermisos } from '../../services/jwt.util';
 import { environment } from '../../../environments/environment';
 
@@ -26,6 +27,7 @@ export class DashboardComponent implements OnInit {
   private authApiService = inject(AuthApiService);
   private catalogoService = inject(CatalogoService);
   private carritoService = inject(CarritoService);
+  private ordersService = inject(OrdersService);
 
   // Estado de la pantalla. Angular no tiene un equivalente directo a
   // useState de React - simplemente son propiedades normales de la clase,
@@ -159,26 +161,33 @@ export class DashboardComponent implements OnInit {
   }
 
   procesarCompra(): void {
-    if (!this.carrito || !this.carrito.items || this.carrito.items.length === 0) return;
+    if (this.procesandoCompra || !this.carrito?.items?.length) return;
     this.procesandoCompra = true;
-
-    // Simula / llama la creacion de orden hacia orders-service y RabbitMQ
-    setTimeout(() => {
-      const orderId = 'ORD-' + Math.floor(1000 + Math.random() * 9000);
-      const total = this.calcularTotalCarrito();
-      this.ordenConfirmada = {
-        id: orderId,
-        total: total,
-        fecha: new Date().toISOString(),
-      };
-      this.vaciarCarrito();
-      this.mostrarCarrito = false;
-      this.procesandoCompra = false;
-      // Recarga el catálogo para mostrar el stock descontado
-      this.catalogoService.listar().subscribe({
-        next: (data) => (this.productos = data),
-      });
-    }, 1200);
+    this.error = null;
+    this.ordersService.crearOrden({
+      clienteEmail: this.usuarioActual || '',
+      total: this.calcularTotalCarrito(),
+      items: this.carrito.items.map((item: any) => ({
+        productoId: item.productoId,
+        nombreProducto: item.nombreProducto,
+        cantidad: item.cantidad,
+        precioUnitario: item.precioUnitario,
+      })),
+    }).subscribe({
+      next: (order) => {
+        this.ordenConfirmada = { id: order.orderId, total: order.total, fecha: order.fecha };
+        this.carritoService.vaciarCarrito().subscribe({
+          next: (carritoVacio) => { this.carrito = carritoVacio; this.mostrarCarrito = false; },
+          error: () => { this.error = 'Orden publicada, pero no se pudo vaciar el carrito. No repitas la compra.'; },
+        });
+        this.procesandoCompra = false;
+        this.catalogoService.listar().subscribe({ next: (data) => (this.productos = data) });
+      },
+      error: (err) => {
+        this.error = `No se pudo publicar la orden: ${err.status || 0} ${err.statusText || ''}`;
+        this.procesandoCompra = false;
+      },
+    });
   }
 
   cerrarSesion(): void {

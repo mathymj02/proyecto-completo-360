@@ -13,7 +13,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/orders")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = {"http://localhost:4200", "https://100.48.154.224"})
 public class OrderController {
 
     private final RabbitTemplate rabbitTemplate;
@@ -25,19 +25,28 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<OrderEvent> crearOrden(@RequestBody OrderEvent request) {
         // Asignar ID unico y fecha si no vienen
-        if (request.getOrderId() == null || request.getOrderId().isEmpty()) {
-            request.setOrderId("ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+        if (request.getItems() == null || request.getItems().isEmpty() || request.getClienteEmail() == null || request.getClienteEmail().isBlank()) {
+            return ResponseEntity.badRequest().build();
         }
+        request.setOrderId("ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
         if (request.getFecha() == null || request.getFecha().isEmpty()) {
             request.setFecha(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         }
 
         // Publicar evento en RabbitMQ hacia el DirectExchange
-        rabbitTemplate.convertAndSend(
-                RabbitMQConfig.EXCHANGE_NAME,
-                RabbitMQConfig.ROUTING_KEY,
-                request
-        );
+        rabbitTemplate.invoke(operations -> {
+            operations.convertAndSend(
+                    RabbitMQConfig.EXCHANGE_NAME,
+                    RabbitMQConfig.ROUTING_KEY,
+                    request,
+                    message -> {
+                        message.getMessageProperties().setDeliveryMode(org.springframework.amqp.core.MessageDeliveryMode.PERSISTENT);
+                        return message;
+                    }
+            );
+            operations.waitForConfirmsOrDie(5000);
+            return null;
+        });
 
         System.out.println("[ORDERS-SERVICE] Orden publicada en RabbitMQ: " + request.getOrderId() + " para " + request.getClienteEmail());
 
