@@ -55,7 +55,7 @@
     <div class="alert-icon">✓</div>
     <div class="alert-body">
       <h4>¡Compra procesada exitosamente!</h4>
-      <p>Se generó la orden <strong>#{{ ordenConfirmada.id }}</strong> por ${{ ordenConfirmada.total | number }}. Evento publicado en RabbitMQ y correo de confirmación enviado a <strong>{{ usuarioActual }}</strong>.</p>
+      <p>Se publicó la orden <strong>#{{ ordenConfirmada.id }}</strong> por ${{ ordenConfirmada.total | number }}. RabbitMQ procesará el inventario, el despacho y la notificación cuando sus servicios estén disponibles.</p>
     </div>
     <button class="btn-close-alert" (click)="ordenConfirmada = null">✕</button>
   </div>

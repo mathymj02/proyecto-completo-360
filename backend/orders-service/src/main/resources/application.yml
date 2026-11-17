@@ -5,6 +5,7 @@ spring:
   application:
     name: orders-service
   rabbitmq:
+    publisher-confirm-type: correlated
     host: 
     port: 
     username: 
