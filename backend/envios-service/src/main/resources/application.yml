@@ -1,4 +1,4 @@
-﻿server:
+server:
   port: 8086
 
 spring:
@@ -8,5 +8,8 @@ spring:
   rabbitmq:
     host: 
     port: 
-    username: 
-    password: 
+    username: ${RABBIT_USER:guest}
+    password: ${RABBIT_PASSWORD:guest}
+    listener:
+      simple:
+        default-requeue-rejected: false

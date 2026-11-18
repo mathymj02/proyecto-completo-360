@@ -12,6 +12,7 @@ export interface OrderItem {
 
 export interface OrderEvent {
   orderId: string;
+  paymentId?: string;
   clienteEmail: string;
   total: number;
   items: OrderItem[];
@@ -22,7 +23,7 @@ export interface OrderEvent {
 export class OrdersService {
   constructor(private http: HttpClient) {}
 
-  crearOrden(order: Pick<OrderEvent, 'clienteEmail' | 'total' | 'items'>): Observable<OrderEvent> {
+  crearOrden(order: Pick<OrderEvent, 'clienteEmail' | 'total' | 'items'> & { paymentId?: string }): Observable<OrderEvent> {
     const ordersUrl = environment.apiUrls.auth.replace(/\/auth$/, '/orders');
     return this.http.post<OrderEvent>(ordersUrl, order);
   }

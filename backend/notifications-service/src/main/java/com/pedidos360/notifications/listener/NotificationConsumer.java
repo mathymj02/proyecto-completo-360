@@ -17,8 +17,11 @@ public class NotificationConsumer {
 
     @RabbitListener(queues = "notifications_queue")
     public void receiveOrderNotification(Map<String, Object> order) {
-        String orderId = String.valueOf(order.getOrDefault("orderId", "N/A"));
-        String clienteEmail = String.valueOf(order.getOrDefault("clienteEmail", "cliente@pedidos360.com"));
+        String orderId = order.get("orderId") == null ? "" : order.get("orderId").toString();
+        String clienteEmail = order.get("clienteEmail") == null ? "" : order.get("clienteEmail").toString();
+        if (orderId.isBlank() || clienteEmail.isBlank()) {
+            throw new IllegalArgumentException("Orden sin ID o correo para notificación");
+        }
         Object total = order.getOrDefault("total", 0);
 
         System.out.println("[RABBITMQ-CONSUMER] Mensaje recibido de notifications_queue para orden: " + orderId);

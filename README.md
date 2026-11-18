@@ -2,7 +2,9 @@
 
 Aplicación de pedidos para estudiar arquitectura cloud y DevOps. Combina un frontend Angular, seis servicios Spring Boot, autenticación con Microsoft Entra ID, un punto de entrada en Amazon API Gateway y procesamiento asíncrono con RabbitMQ. El repositorio contiene el código y una configuración base de Docker Compose; parte de la infraestructura se administra fuera de GitHub.
 
-> **Estado documentado: noviembre de 2026.** El flujo de compra y la recuperación de la cola de stock se probaron en una instancia EC2. Kafka y WebSocket forman parte de la siguiente etapa académica y todavía **no** están implementados.
+> **Estado documentado: 18 de noviembre de 2026.** El flujo de compra y la recuperación de la cola de stock se probaron en EC2. Kafka, WebSocket, pagos Webpay y DynamoDB tienen código local en preparación; aún falta desplegarlos y demostrar el flujo completo en AWS. Consulta [avance de la evaluación](docs/AVANCE-EVALUACION.md) y [configuración AWS y `.env`](docs/CONFIGURACION-AWS-Y-ENV.md).
+
+Para continuar el despliegue, sigue [el cambio de tipo y las verificaciones de EC2](docs/SIGUIENTE-PASO-EC2.md).
 
 ## Qué hace el sistema
 
@@ -62,7 +64,7 @@ Las API de autenticación, catálogo y carrito contienen configuración de Sprin
 
 La API HTTP de AWS tiene un Lambda Authorizer asociado a rutas como `POST /api/v1/orders`. API Gateway toma el encabezado `Authorization`, invoca Lambda y decide si continúa hacia la integración HTTP. Se configuró respuesta simple con formato de payload `2.0`. La [documentación de AWS](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-lambda-authorizer.html) describe ese contrato.
 
-**Limitación comprobada del repositorio:** el archivo [`AuthorizerHandler.java`](backend/authorizer-lambda/src/main/java/com/pedidos360/authorizer/AuthorizerHandler.java) no compila en su estado actual por comillas escapadas literales. Además, su lógica visible parsea el JWT y revisa algunos claims, pero no verifica criptográficamente la firma ni la audiencia. Por ello, el código versionado **no debe presentarse como un authorizer seguro ni como el artefacto exacto desplegado**; la versión activa en AWS no se ha contrastado con este archivo. La revisión y prueba del authorizer es una tarea prioritaria. El servicio de órdenes tampoco implementa en su propio código la misma validación JWT que las tres API originales, por lo que su protección depende de la ruta de entrada configurada en AWS.
+La fuente anterior de [`AuthorizerHandler.java`](backend/authorizer-lambda/src/main/java/com/pedidos360/authorizer/AuthorizerHandler.java) contenía comillas escapadas literales (`\"`) fuera de una cadena Java: por eso no compilaba. La copia local en preparación ya usa comillas Java normales y Nimbus para verificar firma RS256 mediante JWKS, issuer, audience y vigencia; compiló localmente. **Esto todavía no demuestra que la Lambda desplegada en AWS use ese artefacto.** Hay que publicarlo y probar tokens válidos e inválidos. El servicio de órdenes depende de la protección de la ruta en AWS y no debe exponerse directamente sin una verificación equivalente.
 
 ## Enrutamiento en API Gateway y CORS
 
@@ -98,7 +100,7 @@ En la prueba de recuperación se detuvo `catalogo-api`, se efectuó una compra y
 
 El panel de RabbitMQ está en el puerto `15672` del host de demostración (`http://100.48.154.224:15672/`), si la instancia y la regla de red están activas. `Ready` significa pendiente de entrega; `Unacked`, entregado y aún sin confirmación del consumidor. La [guía de fiabilidad de RabbitMQ](https://www.rabbitmq.com/docs/reliability) explica confirmaciones y acknowledgements.
 
-Las colas durables y los mensajes persistentes ayudan frente a reinicios del broker, pero no sustituyen una política de respaldo. El Compose **versionado** no declara un volumen persistente para RabbitMQ; la persistencia del broker en EC2 no se ha comprobado. Tampoco hay idempotencia de consumidores, cola de mensajes fallidos ni trazabilidad de extremo a extremo. La guía de envíos se mantiene en memoria y desaparece si se reinicia ese servicio. El servicio de notificaciones captura errores SMTP, por lo que un correo fallido puede quedar sin reintento.
+Las colas durables y los mensajes persistentes ayudan frente a reinicios del broker, pero no sustituyen una política de respaldo. La instancia anterior usaba un volumen RabbitMQ anónimo cuya persistencia aún debe comprobarse. El código local nuevo define DLQ para stock, notificaciones y envíos y un marcador SQL para evitar doble descuento de stock por redelivery; faltan pruebas con el broker desplegado. La guía de envíos continúa en memoria y desaparece si se reinicia ese servicio. El código local de notificaciones propaga fallos SMTP para que la política DLX pueda derivarlos a la DLQ; la imagen anterior desplegada todavía no incorpora ese cambio.
 
 ## Repositorio y despliegue
 
@@ -112,7 +114,7 @@ postman/              Colección heredada; no cubre necesariamente las seis API
 
 La demostración actual se ejecutó en **Amazon EC2** con Docker Compose: servicios Java, RabbitMQ, base de datos y frontend servido por Nginx. En AWS se configuraron por separado API Gateway, sus rutas, CORS y Lambda Authorizer. `amplify.yml` muestra una opción para compilar el frontend en Amplify, pero el frontend de la prueba se sirvió desde EC2.
 
-La copia de EC2 tiene cambios locales que **no están en la rama principal de GitHub**: configuración de MariaDB, HTTPS y certificados de Nginx, ajustes de `application.yml` y `environment.prod.ts`. Por ello, `docker compose up --build` sobre un clon nuevo no reproduce automáticamente la demostración. Además, varios archivos del repositorio contienen configuración de ejemplo o heredada de RDS. Se deben externalizar credenciales y revisar los hosts antes de compartir o desplegar. No subir claves privadas TLS, archivos `.env` reales ni contraseñas.
+La copia de EC2 tiene cambios locales de HTTPS, certificados de Nginx y `environment.prod.ts`. El código nuevo prepara MariaDB y variables en `.env.example`, pero la EC2 aún no se ha reconciliado con esta copia. Por ello, `docker compose up --build` sobre un clon nuevo todavía no reproduce automáticamente la demostración. Revisa hosts y credenciales siguiendo la [guía de configuración](docs/CONFIGURACION-AWS-Y-ENV.md). No subir claves privadas TLS, archivos `.env` reales ni contraseñas.
 
 Para inspeccionar la versión en ejecución desde la carpeta del proyecto de la EC2:
 
@@ -122,7 +124,7 @@ docker compose logs --since=10m orders-service catalogo-api
 docker compose logs --since=10m rabbitmq
 ```
 
-Para compilar el código localmente se necesitan Java 17, Maven, Node.js compatible con Angular 18 y Docker para los servicios dependientes. El frontend se construye con `npm ci --legacy-peer-deps` y `npm run build` dentro de `frontend/`. La compilación de los microservicios se realiza con Maven en cada módulo. La compilación del proyecto `authorizer-lambda` falla actualmente por el defecto descrito arriba. Una colección Postman histórica vive en [`postman/`](postman/); conviene contrastar cada petición con los controladores y el gateway actuales.
+Para compilar el código localmente se necesitan Java 17, Maven, Node.js compatible con Angular 18 y Docker para los servicios dependientes. El frontend se construye con `npm ci --legacy-peer-deps` y `npm run build` dentro de `frontend/`. La compilación de los microservicios se realiza con Maven en cada módulo. El proyecto `authorizer-lambda` ya compiló tras corregir el defecto descrito arriba, pero su despliegue AWS sigue pendiente. Una colección Postman histórica vive en [`postman/`](postman/); conviene contrastar cada petición con los controladores y el gateway actuales.
 
 ## Qué se comprobó y qué falta
 
@@ -133,6 +135,6 @@ Para compilar el código localmente se necesitan Java 17, Maven, Node.js compati
 | Compra y RabbitMQ | Cola de stock `Ready: 1` con catálogo detenido; `Ready: 0` y stock actualizado al reiniciarlo | Probar fallos, duplicados, persistencia del broker y colas de error |
 | Seguridad | MSAL y validación JWT en tres API; authorizer configurado en AWS | Corregir, compilar y auditar Lambda; verificar firma, issuer, audience y permisos; cerrar accesos directos indebidos |
 | Operación | Docker Compose en EC2 y base MariaDB configurada localmente | Variables de entorno/secretos, TLS confiable, CI, pruebas automatizadas, observabilidad y backups |
-| Nueva evaluación | Kafka y WebSocket pendientes | Implementar según la rúbrica cuando se defina el alcance |
+| Nueva evaluación | Kafka, pagos, analítica, WebSocket y DynamoDB codificados localmente; varias compilaciones y pruebas unitarias pasaron | Desplegar infraestructura, probar integración completa y documentar evidencia según [avance](docs/AVANCE-EVALUACION.md) |
 
 Este README separa **código versionado**, **configuración externa observada** y **trabajo pendiente**. El objetivo es que el proyecto sirva tanto para explicar el flujo en una evaluación como para presentar un portafolio técnico verificable, sin atribuir al repositorio capacidades que todavía dependen de una configuración manual o de una prueba no realizada.

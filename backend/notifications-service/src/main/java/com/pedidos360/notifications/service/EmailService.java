@@ -19,18 +19,21 @@ public class EmailService {
         System.out.println("Cuerpo:       " + body);
         System.out.println("==================================================");
 
-        if (mailSender != null) {
-            try {
-                SimpleMailMessage message = new SimpleMailMessage();
-                message.setTo(to);
-                message.setSubject(subject);
-                message.setText(body);
-                message.setFrom("notificaciones.pedidos360@gmail.com");
-                mailSender.send(message);
-                System.out.println("[NOTIFICATIONS-SERVICE] Correo despachado exitosamente vía SMTP Gmail.");
-            } catch (Exception e) {
-                System.err.println("[NOTIFICATIONS-SERVICE] Aviso: Error conectando a SMTP Gmail (" + e.getMessage() + "). Notificación registrada en consola.");
-            }
+        if (mailSender == null) {
+            throw new IllegalStateException("SMTP no configurado; RabbitMQ debe enviar la orden a notifications_dlq");
+        }
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(to);
+            message.setSubject(subject);
+            message.setText(body);
+            message.setFrom("notificaciones.pedidos360@gmail.com");
+            mailSender.send(message);
+            System.out.println("[NOTIFICATIONS-SERVICE] Correo despachado exitosamente vía SMTP Gmail.");
+        } catch (Exception e) {
+            // Propagar el fallo: con default-requeue-rejected=false y la política
+            // DLX del broker, RabbitMQ mueve este mensaje a notifications_dlq.
+            throw new IllegalStateException("No se pudo enviar el correo de notificación", e);
         }
     }
 }

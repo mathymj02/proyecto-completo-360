@@ -11,6 +11,7 @@ import { MsalGuard } from '@azure/msal-angular';
 import { roleGuard } from './guards/role.guard';
 import { LoginComponent } from './components/login/login.component';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
+import { PaymentReturnComponent } from './components/payment-return/payment-return.component';
 
 export const routes: Routes = [
   { path: '', component: LoginComponent },
@@ -24,5 +25,6 @@ export const routes: Routes = [
     canActivate: [MsalGuard, roleGuard],
     data: { permisoRequerido: 'write-read' },
   },
+  { path: 'payment-return/:paymentId', component: PaymentReturnComponent, canActivate: [MsalGuard] },
   { path: '**', redirectTo: '' },
 ];

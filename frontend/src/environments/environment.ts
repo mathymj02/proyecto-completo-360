@@ -9,6 +9,9 @@
 // IMPORTANTE: reemplaza los valores de aca con los de TU PROPIA App
 // Registration (la que creaste con soporte multi-tenant), no la del profe.
 export const environment = {
+  paymentsEnabled: false,
+  analyticsEnabled: false,
+  analyticsWsUrl: 'ws://localhost:8088/ws/metrics',
   production: false,
 
   azureAd: {

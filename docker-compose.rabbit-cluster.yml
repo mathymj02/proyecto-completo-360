@@ -1,0 +1,29 @@
+# Extiende docker-compose.yml. La cookie debe ser igual en ambos nodos.
+# Antes de activar este archivo en EC2, revisar el volumen anonimo existente.
+services:
+  rabbitmq:
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_NODENAME: rabbit@rabbitmq
+      RABBITMQ_ERLANG_COOKIE: ${RABBIT_ERLANG_COOKIE:?Define RABBIT_ERLANG_COOKIE en .env}
+    volumes:
+      - rabbitmq-1-data:/var/lib/rabbitmq
+      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+
+  rabbitmq-2:
+    image: rabbitmq:3.12-management-alpine
+    hostname: rabbitmq-2
+    restart: unless-stopped
+    environment:
+      RABBITMQ_NODENAME: rabbit@rabbitmq-2
+      RABBITMQ_ERLANG_COOKIE: ${RABBIT_ERLANG_COOKIE:?Define RABBIT_ERLANG_COOKIE en .env}
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD:?Define RABBIT_PASSWORD en .env}
+    volumes:
+      - rabbitmq-2-data:/var/lib/rabbitmq
+      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    networks: [pedidos360-network]
+
+volumes:
+  rabbitmq-1-data:
+  rabbitmq-2-data:

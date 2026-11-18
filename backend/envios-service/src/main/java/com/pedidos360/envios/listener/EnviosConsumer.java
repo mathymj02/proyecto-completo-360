@@ -17,8 +17,15 @@ public class EnviosConsumer {
 
     @RabbitListener(queues = "envios_queue")
     public void processOrderForShipping(Map<String, Object> order) {
-        String orderId = String.valueOf(order.getOrDefault("orderId", "ORD-UNKNOWN"));
-        String clienteEmail = String.valueOf(order.getOrDefault("clienteEmail", "cliente@pedidos360.com"));
+        String orderId = order.get("orderId") == null ? "" : order.get("orderId").toString();
+        String clienteEmail = order.get("clienteEmail") == null ? "" : order.get("clienteEmail").toString();
+        if (orderId.isBlank() || clienteEmail.isBlank()) {
+            throw new IllegalArgumentException("Orden sin ID o correo para despacho");
+        }
+        if (guiasPorOrden.containsKey(orderId)) {
+            System.out.println("[ENVIOS-SERVICE] Guía existente para orden: " + orderId);
+            return;
+        }
 
         String tracking = "TRK-" + (int)(10000 + Math.random() * 90000) + "-CL";
         String entregaEstimada = LocalDateTime.now().plusDays(2).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));

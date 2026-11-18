@@ -1,0 +1,28 @@
+# Sobre docker-compose.yml en la EC2 original. Aplicar SOLO despues de
+# comprobar Kafka, los dos nodos Rabbit, DB y las colas vacias del broker viejo.
+# La IP privada de la nueva EC2 se lee de .env en la EC2 original.
+services:
+  catalogo-api:
+    environment:
+      SPRING_RABBITMQ_HOST: ${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}
+      ANALYTICS_KAFKA_ENABLED: "true"
+      KAFKA_BOOTSTRAP_SERVERS: "${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}:29092,${PLATFORM_PRIVATE_IP}:29093,${PLATFORM_PRIVATE_IP}:29094"
+
+  carrito-api:
+    environment:
+      ANALYTICS_KAFKA_ENABLED: "true"
+      KAFKA_BOOTSTRAP_SERVERS: "${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}:29092,${PLATFORM_PRIVATE_IP}:29093,${PLATFORM_PRIVATE_IP}:29094"
+
+  orders-service:
+    environment:
+      SPRING_RABBITMQ_HOST: ${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}
+      PAYMENTS_REQUIRED: "true"
+      PAYMENTS_URL: "http://${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}:8087/api/v1/payments"
+
+  notifications-service:
+    environment:
+      SPRING_RABBITMQ_HOST: ${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}
+
+  envios-service:
+    environment:
+      SPRING_RABBITMQ_HOST: ${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}

@@ -5,6 +5,7 @@ import java.util.List;
 
 public class OrderEvent implements Serializable {
     private String orderId;
+    private String paymentId;
     private String clienteEmail;
     private Double total;
     private List<OrderItem> items;
@@ -22,6 +23,8 @@ public class OrderEvent implements Serializable {
 
     public String getOrderId() { return orderId; }
     public void setOrderId(String orderId) { this.orderId = orderId; }
+    public String getPaymentId() { return paymentId; }
+    public void setPaymentId(String paymentId) { this.paymentId = paymentId; }
 
     public String getClienteEmail() { return clienteEmail; }
     public void setClienteEmail(String clienteEmail) { this.clienteEmail = clienteEmail; }

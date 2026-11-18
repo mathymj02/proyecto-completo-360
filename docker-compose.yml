@@ -1,6 +1,22 @@
-version: '3.8'
-
 services:
+  mariadb:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:-pedidos360}
+      MARIADB_USER: ${DB_USERNAME:?Define DB_USERNAME en .env}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Define DB_ROOT_PASSWORD en .env}
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - pedidos360-network
+
   # -------------------------------------------------------------
   # FRONTEND ANGULAR (Servido por Nginx en puerto 80 en la EC2)
   # -------------------------------------------------------------
@@ -22,10 +38,10 @@ services:
     restart: always
     ports:
       - "5672:5672"    # Puerto AMQP para comunicación con Spring Boot
-      - "15672:15672"  # Consola Web de Administración (admin / admin123)
+      - "15672:15672"  # Consola Web de Administración
     environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin123
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD:?Define RABBIT_PASSWORD en .env}
     networks:
       - pedidos360-network
 
@@ -41,10 +57,14 @@ services:
     environment:
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: admin
-      SPRING_RABBITMQ_PASSWORD: admin123
+      SPRING_RABBITMQ_USERNAME: ${RABBIT_USER:-admin}
+      SPRING_RABBITMQ_PASSWORD: ${RABBIT_PASSWORD:?Define RABBIT_PASSWORD en .env}
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mariadb:3306/${DB_NAME:-pedidos360}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:?Define DB_USERNAME en .env}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
     depends_on:
       - rabbitmq
+      - mariadb
     networks:
       - pedidos360-network
 
@@ -54,6 +74,12 @@ services:
     restart: always
     ports:
       - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mariadb:3306/${DB_NAME:-pedidos360}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:?Define DB_USERNAME en .env}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
+    depends_on:
+      - mariadb
     networks:
       - pedidos360-network
 
@@ -78,8 +104,8 @@ services:
     environment:
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: admin
-      SPRING_RABBITMQ_PASSWORD: admin123
+      SPRING_RABBITMQ_USERNAME: ${RABBIT_USER:-admin}
+      SPRING_RABBITMQ_PASSWORD: ${RABBIT_PASSWORD:?Define RABBIT_PASSWORD en .env}
     depends_on:
       - rabbitmq
     networks:
@@ -94,8 +120,10 @@ services:
     environment:
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: admin
-      SPRING_RABBITMQ_PASSWORD: admin123
+      SPRING_RABBITMQ_USERNAME: ${RABBIT_USER:-admin}
+      SPRING_RABBITMQ_PASSWORD: ${RABBIT_PASSWORD:?Define RABBIT_PASSWORD en .env}
+      SPRING_MAIL_USERNAME: ${MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD:-}
     depends_on:
       - rabbitmq
     networks:
@@ -110,8 +138,8 @@ services:
     environment:
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: admin
-      SPRING_RABBITMQ_PASSWORD: admin123
+      SPRING_RABBITMQ_USERNAME: ${RABBIT_USER:-admin}
+      SPRING_RABBITMQ_PASSWORD: ${RABBIT_PASSWORD:?Define RABBIT_PASSWORD en .env}
     depends_on:
       - rabbitmq
     networks:
@@ -120,3 +148,6 @@ services:
 networks:
   pedidos360-network:
     driver: bridge
+
+volumes:
+  mariadb-data:

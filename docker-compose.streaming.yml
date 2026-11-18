@@ -1,0 +1,167 @@
+# Extiende docker-compose.yml para la evaluacion de streaming.
+# Requiere RAM adicional; NO iniciar en la EC2 original de 913 MiB.
+x-zookeeper-env: &zookeeper-env
+  ZOOKEEPER_CLIENT_PORT: 2181
+  ZOOKEEPER_TICK_TIME: 2000
+  ZOOKEEPER_INIT_LIMIT: 10
+  ZOOKEEPER_SYNC_LIMIT: 5
+  ZOOKEEPER_SERVERS: "zookeeper-1:2888:3888;zookeeper-2:2888:3888;zookeeper-3:2888:3888"
+  KAFKA_HEAP_OPTS: "-Xms128m -Xmx256m"
+
+x-kafka-env: &kafka-env
+  KAFKA_ZOOKEEPER_CONNECT: "zookeeper-1:2181,zookeeper-2:2181,zookeeper-3:2181"
+  KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:29092"
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT"
+  KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+  KAFKA_MIN_INSYNC_REPLICAS: 2
+  KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+  KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
+
+services:
+  catalogo-api:
+    environment:
+      ANALYTICS_KAFKA_ENABLED: "true"
+      KAFKA_BOOTSTRAP_SERVERS: "kafka-1:29092,kafka-2:29092,kafka-3:29092"
+
+  carrito-api:
+    environment:
+      ANALYTICS_KAFKA_ENABLED: "true"
+      KAFKA_BOOTSTRAP_SERVERS: "kafka-1:29092,kafka-2:29092,kafka-3:29092"
+
+  orders-service:
+    environment:
+      PAYMENTS_REQUIRED: "true"
+      PAYMENTS_URL: "http://ms-pago:8087/api/v1/payments"
+
+  zookeeper-1:
+    image: confluentinc/cp-zookeeper:7.6.15
+    hostname: zookeeper-1
+    restart: unless-stopped
+    environment:
+      <<: *zookeeper-env
+      ZOOKEEPER_SERVER_ID: 1
+    volumes:
+      - zookeeper-1-data:/var/lib/zookeeper/data
+      - zookeeper-1-log:/var/lib/zookeeper/log
+    networks: [pedidos360-network]
+
+  zookeeper-2:
+    image: confluentinc/cp-zookeeper:7.6.15
+    hostname: zookeeper-2
+    restart: unless-stopped
+    environment:
+      <<: *zookeeper-env
+      ZOOKEEPER_SERVER_ID: 2
+    volumes:
+      - zookeeper-2-data:/var/lib/zookeeper/data
+      - zookeeper-2-log:/var/lib/zookeeper/log
+    networks: [pedidos360-network]
+
+  zookeeper-3:
+    image: confluentinc/cp-zookeeper:7.6.15
+    hostname: zookeeper-3
+    restart: unless-stopped
+    environment:
+      <<: *zookeeper-env
+      ZOOKEEPER_SERVER_ID: 3
+    volumes:
+      - zookeeper-3-data:/var/lib/zookeeper/data
+      - zookeeper-3-log:/var/lib/zookeeper/log
+    networks: [pedidos360-network]
+
+  kafka-1:
+    image: confluentinc/cp-kafka:7.6.15
+    hostname: kafka-1
+    restart: unless-stopped
+    depends_on: [zookeeper-1, zookeeper-2, zookeeper-3]
+    environment:
+      <<: *kafka-env
+      KAFKA_BROKER_ID: 1
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-1:29092"
+    volumes:
+      - kafka-1-data:/var/lib/kafka/data
+    networks: [pedidos360-network]
+
+  kafka-2:
+    image: confluentinc/cp-kafka:7.6.15
+    hostname: kafka-2
+    restart: unless-stopped
+    depends_on: [zookeeper-1, zookeeper-2, zookeeper-3]
+    environment:
+      <<: *kafka-env
+      KAFKA_BROKER_ID: 2
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-2:29092"
+    volumes:
+      - kafka-2-data:/var/lib/kafka/data
+    networks: [pedidos360-network]
+
+  kafka-3:
+    image: confluentinc/cp-kafka:7.6.15
+    hostname: kafka-3
+    restart: unless-stopped
+    depends_on: [zookeeper-1, zookeeper-2, zookeeper-3]
+    environment:
+      <<: *kafka-env
+      KAFKA_BROKER_ID: 3
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-3:29092"
+    volumes:
+      - kafka-3-data:/var/lib/kafka/data
+    networks: [pedidos360-network]
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    restart: unless-stopped
+    depends_on: [kafka-1, kafka-2, kafka-3]
+    ports:
+      - "127.0.0.1:8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: pedidos360
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka-1:29092,kafka-2:29092,kafka-3:29092"
+      KAFKA_CLUSTERS_0_ZOOKEEPER: "zookeeper-1:2181,zookeeper-2:2181,zookeeper-3:2181"
+    networks: [pedidos360-network]
+
+  analytics-recommendations:
+    build: ./backend/analytics-recommendations
+    restart: unless-stopped
+    depends_on: [kafka-1, kafka-2, kafka-3]
+    ports:
+      - "127.0.0.1:8088:8088"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: "kafka-1:29092,kafka-2:29092,kafka-3:29092"
+      DYNAMODB_ENABLED: "${DYNAMODB_ENABLED:-false}"
+      DYNAMODB_TABLE: "${DYNAMODB_TABLE:-Pedidos360Events}"
+      AWS_REGION: "${AWS_REGION:-us-east-1}"
+      FRONTEND_ORIGIN: "${FRONTEND_ORIGIN:-http://localhost:4200}"
+    networks: [pedidos360-network]
+
+  ms-pago:
+    build: ./backend/ms-pago
+    restart: unless-stopped
+    depends_on: [mariadb, kafka-1, kafka-2, kafka-3]
+    ports:
+      - "8087:8087"
+    environment:
+      DB_URL: "jdbc:mariadb://mariadb:3306/${DB_NAME:-pedidos360}"
+      DB_USERNAME: "${DB_USERNAME:?Define DB_USERNAME en .env}"
+      DB_PASSWORD: "${DB_PASSWORD:?Define DB_PASSWORD en .env}"
+      KAFKA_BOOTSTRAP_SERVERS: "kafka-1:29092,kafka-2:29092,kafka-3:29092"
+      CARD_HASH_SALT: "${CARD_HASH_SALT:?Define CARD_HASH_SALT en .env}"
+      FRONTEND_BASE_URL: "${FRONTEND_BASE_URL:?Define FRONTEND_BASE_URL en .env}"
+      WEBPAY_COMMERCE_CODE: "${WEBPAY_COMMERCE_CODE:?Define WEBPAY_COMMERCE_CODE en .env}"
+      WEBPAY_API_KEY: "${WEBPAY_API_KEY:?Define WEBPAY_API_KEY en .env}"
+    networks: [pedidos360-network]
+
+volumes:
+  zookeeper-1-data:
+  zookeeper-1-log:
+  zookeeper-2-data:
+  zookeeper-2-log:
+  zookeeper-3-data:
+  zookeeper-3-log:
+  kafka-1-data:
+  kafka-2-data:
+  kafka-3-data:

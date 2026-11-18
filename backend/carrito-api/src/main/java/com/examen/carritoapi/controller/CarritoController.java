@@ -4,6 +4,7 @@ import com.examen.carritoapi.dto.ActualizarCantidadRequest;
 import com.examen.carritoapi.dto.AgregarItemRequest;
 import com.examen.carritoapi.dto.CarritoResponse;
 import com.examen.carritoapi.service.CarritoService;
+import com.examen.carritoapi.analytics.AnalyticsPublisher;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -29,9 +30,11 @@ import org.springframework.web.bind.annotation.*;
 public class CarritoController {
 
     private final CarritoService service;
+    private final AnalyticsPublisher analytics;
 
-    public CarritoController(CarritoService service) {
+    public CarritoController(CarritoService service, AnalyticsPublisher analytics) {
         this.service = service;
+        this.analytics = analytics;
     }
 
     /**
@@ -84,6 +87,7 @@ public class CarritoController {
     public ResponseEntity<CarritoResponse> agregarItem(@AuthenticationPrincipal Jwt jwt,
                                                          @Valid @RequestBody AgregarItemRequest request) {
         var carrito = service.agregarItem(obtenerUsuarioId(jwt), request);
+        analytics.itemAdded(obtenerUsuarioId(jwt), request);
         return ResponseEntity.ok(CarritoResponse.desde(carrito));
     }
 

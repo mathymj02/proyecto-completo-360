@@ -1,0 +1,190 @@
+# Ejecutar SOLO en la EC2 nueva t3.large. No incluir docker-compose.yml base.
+# Los tres brokers comparten la EC2: cumple la topologia academica 3x3,
+# pero la caida de esta maquina afecta a todas las replicas.
+x-zookeeper-env: &zookeeper-env
+  ZOOKEEPER_CLIENT_PORT: 2181
+  ZOOKEEPER_TICK_TIME: 2000
+  ZOOKEEPER_INIT_LIMIT: 10
+  ZOOKEEPER_SYNC_LIMIT: 5
+  ZOOKEEPER_SERVERS: "zookeeper-1:2888:3888;zookeeper-2:2888:3888;zookeeper-3:2888:3888"
+  KAFKA_HEAP_OPTS: "-Xms128m -Xmx256m"
+
+x-kafka-env: &kafka-env
+  KAFKA_ZOOKEEPER_CONNECT: "zookeeper-1:2181,zookeeper-2:2181,zookeeper-3:2181"
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+  KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+  KAFKA_MIN_INSYNC_REPLICAS: 2
+  KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+  KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
+
+services:
+  zookeeper-1:
+    image: confluentinc/cp-zookeeper:7.6.15
+    hostname: zookeeper-1
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      <<: *zookeeper-env
+      ZOOKEEPER_SERVER_ID: 1
+    volumes: [zookeeper-1-data:/var/lib/zookeeper/data, zookeeper-1-log:/var/lib/zookeeper/log]
+    networks: [platform-network]
+  zookeeper-2:
+    image: confluentinc/cp-zookeeper:7.6.15
+    hostname: zookeeper-2
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      <<: *zookeeper-env
+      ZOOKEEPER_SERVER_ID: 2
+    volumes: [zookeeper-2-data:/var/lib/zookeeper/data, zookeeper-2-log:/var/lib/zookeeper/log]
+    networks: [platform-network]
+  zookeeper-3:
+    image: confluentinc/cp-zookeeper:7.6.15
+    hostname: zookeeper-3
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      <<: *zookeeper-env
+      ZOOKEEPER_SERVER_ID: 3
+    volumes: [zookeeper-3-data:/var/lib/zookeeper/data, zookeeper-3-log:/var/lib/zookeeper/log]
+    networks: [platform-network]
+
+  kafka-1:
+    image: confluentinc/cp-kafka:7.6.15
+    hostname: kafka-1
+    restart: unless-stopped
+    mem_limit: 768m
+    depends_on: [zookeeper-1, zookeeper-2, zookeeper-3]
+    environment:
+      <<: *kafka-env
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTENERS: "INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka-1:9092,EXTERNAL://${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}:29092"
+    ports: ["${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}:29092:29092"]
+    volumes: [kafka-1-data:/var/lib/kafka/data]
+    networks: [platform-network]
+  kafka-2:
+    image: confluentinc/cp-kafka:7.6.15
+    hostname: kafka-2
+    restart: unless-stopped
+    mem_limit: 768m
+    depends_on: [zookeeper-1, zookeeper-2, zookeeper-3]
+    environment:
+      <<: *kafka-env
+      KAFKA_BROKER_ID: 2
+      KAFKA_LISTENERS: "INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29093"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka-2:9092,EXTERNAL://${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}:29093"
+    ports: ["${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}:29093:29093"]
+    volumes: [kafka-2-data:/var/lib/kafka/data]
+    networks: [platform-network]
+  kafka-3:
+    image: confluentinc/cp-kafka:7.6.15
+    hostname: kafka-3
+    restart: unless-stopped
+    mem_limit: 768m
+    depends_on: [zookeeper-1, zookeeper-2, zookeeper-3]
+    environment:
+      <<: *kafka-env
+      KAFKA_BROKER_ID: 3
+      KAFKA_LISTENERS: "INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29094"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka-3:9092,EXTERNAL://${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}:29094"
+    ports: ["${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}:29094:29094"]
+    volumes: [kafka-3-data:/var/lib/kafka/data]
+    networks: [platform-network]
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    restart: unless-stopped
+    mem_limit: 512m
+    depends_on: [kafka-1, kafka-2, kafka-3]
+    ports: ["127.0.0.1:8090:8080"]
+    environment:
+      KAFKA_CLUSTERS_0_NAME: pedidos360
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka-1:9092,kafka-2:9092,kafka-3:9092"
+      KAFKA_CLUSTERS_0_ZOOKEEPER: "zookeeper-1:2181,zookeeper-2:2181,zookeeper-3:2181"
+      JAVA_OPTS: "-Xms128m -Xmx256m"
+    networks: [platform-network]
+
+  rabbitmq-1:
+    image: rabbitmq:3.12-management-alpine
+    hostname: rabbitmq-1
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      RABBITMQ_NODENAME: rabbit@rabbitmq-1
+      RABBITMQ_ERLANG_COOKIE: ${RABBIT_ERLANG_COOKIE:?Define RABBIT_ERLANG_COOKIE en .env}
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER:?Define RABBIT_USER en .env}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD:?Define RABBIT_PASSWORD en .env}
+    ports:
+      - "${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}:5672:5672"
+      - "127.0.0.1:15672:15672"
+    volumes:
+      - rabbitmq-1-data:/var/lib/rabbitmq
+      - ./infra/rabbitmq/rabbitmq-platform.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    networks: [platform-network]
+  rabbitmq-2:
+    image: rabbitmq:3.12-management-alpine
+    hostname: rabbitmq-2
+    restart: unless-stopped
+    mem_limit: 512m
+    depends_on: [rabbitmq-1]
+    environment:
+      RABBITMQ_NODENAME: rabbit@rabbitmq-2
+      RABBITMQ_ERLANG_COOKIE: ${RABBIT_ERLANG_COOKIE:?Define RABBIT_ERLANG_COOKIE en .env}
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER:?Define RABBIT_USER en .env}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD:?Define RABBIT_PASSWORD en .env}
+    volumes:
+      - rabbitmq-2-data:/var/lib/rabbitmq
+      - ./infra/rabbitmq/rabbitmq-platform.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    networks: [platform-network]
+
+  ms-pago:
+    build: ./backend/ms-pago
+    restart: unless-stopped
+    mem_limit: 768m
+    depends_on: [kafka-1, kafka-2, kafka-3]
+    ports: ["${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}:8087:8087"]
+    environment:
+      DB_URL: "jdbc:mariadb://${CORE_PRIVATE_IP:?Define CORE_PRIVATE_IP en .env}:3306/${DB_NAME:-pedidos360}"
+      DB_USERNAME: ${DB_USERNAME:?Define DB_USERNAME en .env}
+      DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
+      KAFKA_BOOTSTRAP_SERVERS: "kafka-1:9092,kafka-2:9092,kafka-3:9092"
+      CARD_HASH_SALT: ${CARD_HASH_SALT:?Define CARD_HASH_SALT en .env}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:?Define FRONTEND_BASE_URL en .env}
+      WEBPAY_COMMERCE_CODE: ${WEBPAY_COMMERCE_CODE:?Define WEBPAY_COMMERCE_CODE en .env}
+      WEBPAY_API_KEY: ${WEBPAY_API_KEY:?Define WEBPAY_API_KEY en .env}
+    networks: [platform-network]
+  analytics-recommendations:
+    build: ./backend/analytics-recommendations
+    restart: unless-stopped
+    mem_limit: 768m
+    depends_on: [kafka-1, kafka-2, kafka-3]
+    ports: ["${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}:8088:8088"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: "kafka-1:9092,kafka-2:9092,kafka-3:9092"
+      DYNAMODB_ENABLED: ${DYNAMODB_ENABLED:-false}
+      DYNAMODB_TABLE: ${DYNAMODB_TABLE:-Pedidos360Events}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?Define FRONTEND_ORIGIN en .env}
+    networks: [platform-network]
+
+networks:
+  platform-network:
+    driver: bridge
+
+volumes:
+  zookeeper-1-data:
+  zookeeper-1-log:
+  zookeeper-2-data:
+  zookeeper-2-log:
+  zookeeper-3-data:
+  zookeeper-3-log:
+  kafka-1-data:
+  kafka-2-data:
+  kafka-3-data:
+  rabbitmq-1-data:
+  rabbitmq-2-data:

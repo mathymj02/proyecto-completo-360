@@ -22,3 +22,11 @@ yarn-error.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Configuracion local y claves privadas
+.env
+.env.*
+!.env.example
+frontend/ssl/
+*.key
+*.pem

@@ -3,10 +3,13 @@ package com.examen.catalogoapi.controller;
 import com.examen.catalogoapi.dto.ProductoRequest;
 import com.examen.catalogoapi.model.Producto;
 import com.examen.catalogoapi.service.ProductoService;
+import com.examen.catalogoapi.analytics.AnalyticsPublisher;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.List;
 
@@ -25,9 +28,11 @@ import java.util.List;
 public class ProductoController {
 
     private final ProductoService service;
+    private final AnalyticsPublisher analytics;
 
-    public ProductoController(ProductoService service) {
+    public ProductoController(ProductoService service, AnalyticsPublisher analytics) {
         this.service = service;
+        this.analytics = analytics;
     }
 
     /**
@@ -48,8 +53,11 @@ public class ProductoController {
      * automaticamente.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Producto> obtener(@PathVariable Long id) {
-        return ResponseEntity.ok(service.buscarPorId(id));
+    public ResponseEntity<Producto> obtener(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+        Producto producto = service.buscarPorId(id);
+        String oid = jwt.getClaimAsString("oid");
+        analytics.productViewed(oid != null ? oid : jwt.getSubject(), producto);
+        return ResponseEntity.ok(producto);
     }
 
     /**

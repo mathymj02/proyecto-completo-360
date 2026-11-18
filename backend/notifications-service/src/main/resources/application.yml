@@ -1,4 +1,4 @@
-﻿server:
+server:
   port: 8085
 
 spring:
@@ -9,15 +9,18 @@ spring:
   rabbitmq:
     host: 
     port: 
-    username: 
-    password: 
+    username: ${RABBIT_USER:guest}
+    password: ${RABBIT_PASSWORD:guest}
+    listener:
+      simple:
+        default-requeue-rejected: false
 
   # Configuración SMTP Gmail (Guía Duoc UC)
   mail:
     host: smtp.gmail.com
     port: 587
-    username: 
-    password: 
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:

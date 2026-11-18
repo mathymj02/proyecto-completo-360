@@ -5,29 +5,35 @@
 // por eso los 3 servicios (AuthApiService, CatalogoService, CarritoService)
 // se pueden llamar directo, sin pedir el token a mano: MsalInterceptor se
 // encarga de pegarlo en cada request saliente.
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MsalService } from '@azure/msal-angular';
 import { AuthApiService } from '../../services/auth-api.service';
 import { CatalogoService, Producto } from '../../services/catalogo.service';
 import { CarritoService } from '../../services/carrito.service';
 import { OrdersService } from '../../services/orders.service';
+import { PaymentsService } from '../../services/payments.service';
+import { AnalyticsService, MetricsSnapshot, Recommendation } from '../../services/analytics.service';
 import { decodeJwtPayload, extraerPermisos } from '../../services/jwt.util';
 import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css'],
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   private msalService = inject(MsalService);
   private authApiService = inject(AuthApiService);
   private catalogoService = inject(CatalogoService);
   private carritoService = inject(CarritoService);
   private ordersService = inject(OrdersService);
+  private paymentsService = inject(PaymentsService);
+  private analyticsService = inject(AnalyticsService);
+  private metricsSocket?: WebSocket;
 
   // Estado de la pantalla. Angular no tiene un equivalente directo a
   // useState de React - simplemente son propiedades normales de la clase,
@@ -44,6 +50,12 @@ export class DashboardComponent implements OnInit {
   error: string | null = null;
   mostrarCarrito = false;
   procesandoCompra = false;
+  cardAlias = 'tarjetaDemo';
+  paymentsEnabled = environment.paymentsEnabled;
+  analyticsEnabled = environment.analyticsEnabled;
+  metrics: MetricsSnapshot | null = null;
+  recommendations: Recommendation[] = [];
+  selectedProduct: Producto | null = null;
   ordenConfirmada: any = null;
 
   get totalItemsCarrito(): number {
@@ -57,6 +69,35 @@ export class DashboardComponent implements OnInit {
       this.usuarioActual = cuenta.username || cuenta.name || null;
     }
     this.cargarTodo();
+    if (this.analyticsEnabled) {
+      this.analyticsService.metrics().subscribe({
+        next: (snapshot) => (this.metrics = snapshot),
+        error: (error) => console.warn('Metricas no disponibles', error),
+      });
+      this.metricsSocket = this.analyticsService.connect((snapshot) => (this.metrics = snapshot));
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.metricsSocket?.close();
+  }
+
+  verDetalle(product: Producto): void {
+    if (product.id == null) return;
+    this.catalogoService.obtener(product.id).subscribe({
+      next: (details) => {
+        this.selectedProduct = details;
+        if (this.analyticsEnabled) setTimeout(() => this.loadRecommendations(), 800);
+      },
+      error: (error) => console.warn('No se pudo abrir el producto', error),
+    });
+  }
+
+  loadRecommendations(): void {
+    this.analyticsService.recommendations().subscribe({
+      next: (items) => (this.recommendations = items),
+      error: (error) => console.warn('Recomendaciones no disponibles', error),
+    });
   }
 
   private cargarTodo(): void {
@@ -164,6 +205,53 @@ export class DashboardComponent implements OnInit {
     if (this.procesandoCompra || !this.carrito?.items?.length) return;
     this.procesandoCompra = true;
     this.error = null;
+    if (environment.paymentsEnabled) {
+      const pendingOrder = {
+        clienteEmail: this.usuarioActual || '',
+        total: this.calcularTotalCarrito(),
+        items: this.carrito.items.map((item: any) => ({
+          productoId: item.productoId,
+          nombreProducto: item.nombreProducto,
+          cantidad: item.cantidad,
+          precioUnitario: item.precioUnitario,
+        })),
+      };
+      this.paymentsService.start(pendingOrder.total, this.cardAlias).subscribe({
+        next: (payment) => {
+          if (payment.status !== 'INITIATED' || !payment.url || !payment.token) {
+            this.error = 'El pago no pudo iniciarse.';
+            this.procesandoCompra = false;
+            return;
+          }
+          const paymentUrl = new URL(payment.url);
+          if (paymentUrl.protocol !== 'https:' || !paymentUrl.hostname.endsWith('.transbank.cl')) {
+            this.error = 'Webpay devolvio una URL inesperada.';
+            this.procesandoCompra = false;
+            return;
+          }
+          sessionStorage.setItem('pedidos360_pending_order', JSON.stringify({
+            paymentId: payment.paymentId, order: pendingOrder,
+          }));
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = payment.url;
+          const token = document.createElement('input');
+          token.type = 'hidden';
+          token.name = 'token_ws';
+          token.value = payment.token;
+          form.appendChild(token);
+          document.body.appendChild(form);
+          form.submit();
+        },
+        error: (err) => {
+          this.error = err.status === 429
+            ? 'Pago bloqueado: mas de tres intentos con el mismo alias en diez segundos.'
+            : 'No se pudo iniciar Webpay. Revisa el servicio de pagos.';
+          this.procesandoCompra = false;
+        },
+      });
+      return;
+    }
     this.ordersService.crearOrden({
       clienteEmail: this.usuarioActual || '',
       total: this.calcularTotalCarrito(),
