@@ -1,6 +1,6 @@
 # Alternativa: conservar la EC2 actual y crear otra
 
-La EC2 actual sigue sirviendo Angular, las API existentes, MariaDB y el RabbitMQ anterior. Al no detenerla, conserva su IP pública actual mientras siga en ejecución. La prueba `aws ec2 run-instances --dry-run` permitió solicitar una **nueva `t3.large` de 8 GiB**, mientras que `t3.xlarge` fue denegada por `Pvoclabs2`. La nueva EC2 alojaría los tres ZooKeeper, los tres brokers Kafka, Kafka UI, `ms-pago`, analítica y **un clúster RabbitMQ nuevo de dos nodos**. Ambas instancias deben estar en la misma VPC para comunicarse por IP privada. El permiso de `StartInstances` para la nueva instancia se comprobará después de lanzarla; `RunInstances` y `StartInstances` son permisos diferentes.
+La EC2 original sigue sirviendo Angular, las API existentes, MariaDB y el RabbitMQ anterior desde `100.48.154.224` (`172.31.41.113` dentro de la VPC). La segunda EC2 `i-05a83d666c15001df` ya está ejecutándose como `t3.large`, con IP privada `172.31.42.125`. Docker 25.0.18 y Compose v2.30.3 están instalados; aún falta levantar y probar los servicios. La prueba `aws ec2 run-instances --dry-run` permitió `t3.large`, mientras que `t3.xlarge` fue denegada por `Pvoclabs2`. `StartInstances --dry-run` para la nueva EC2 devolvió `DryRunOperation`. Ambas instancias están en la misma subred/VPC y se comunicarán por IP privada.
 
 ```text
 Navegador -> EC2 actual (frontend/API existentes/Rabbit anterior/MariaDB)

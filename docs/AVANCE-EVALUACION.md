@@ -4,7 +4,7 @@ Actualizado el 18 de noviembre de 2026. **Implementado en código** significa qu
 
 **Restricción del laboratorio observada:** VocLabs rechazó con `explicit deny` el arranque de la instancia al cambiarla a `t3.xlarge`. Se devolvió a `t3.micro` y arrancaron los nueve contenedores anteriores; Nginx respondió `200 OK` desde la propia EC2. La IPv4 pública comunicada siguió siendo `100.48.154.224`. No iniciar los clústeres en los 913 MiB de RAM actuales.
 
-**Actualización posterior:** el usuario confirmó que frontend y catálogo cargan desde el navegador. `RunInstances --dry-run` rechazó `t3.xlarge` y aceptó `t3.large` (8 GiB). Se prepara un despliegue de dos EC2; aún no se creó ni verificó la segunda instancia.
+**Actualización 18-11-2026:** el usuario confirmó que frontend y catálogo cargan desde el navegador en la EC2 original. `RunInstances --dry-run` rechazó `t3.xlarge` y aceptó `t3.large` (8 GiB). La segunda instancia `i-05a83d666c15001df` ya está en ejecución, con Amazon Linux 2023, 7,6 GiB de RAM, 30 GiB de disco, Docker 25.0.18 y Compose v2.30.3. Los clústeres todavía no se han levantado ni probado en ella.
 
 | Requisito | Estado comprobado | Falta para demostrarlo |
 | --- | --- | --- |
