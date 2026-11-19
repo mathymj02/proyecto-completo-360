@@ -28,5 +28,6 @@ Thumbs.db
 .env.*
 !.env.example
 frontend/ssl/
+docker-compose.live-ec2.yml
 *.key
 *.pem

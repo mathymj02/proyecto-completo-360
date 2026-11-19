@@ -1,0 +1,17 @@
+# Activación gradual en la EC2 original: Kafka para catálogo y carrito.
+# Usar sobre una copia local de la configuración Compose que ya funciona:
+# docker compose -p proyecto-completo -f docker-compose.live-ec2.yml \
+#   -f docker-compose.kafka-core-ec2.yml up -d --no-deps --build catalogo-api
+# No cambia RabbitMQ ni habilita pagos.
+services:
+  catalogo-api:
+    environment:
+      ANALYTICS_KAFKA_ENABLED: "true"
+      KAFKA_BOOTSTRAP_SERVERS: "${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}:29092,${PLATFORM_PRIVATE_IP}:29093,${PLATFORM_PRIVATE_IP}:29094"
+      CORS_ALLOWED_ORIGINS: "https://100.48.154.224,http://localhost:4200,https://d4ehy77hhb.execute-api.us-east-1.amazonaws.com"
+
+  carrito-api:
+    environment:
+      ANALYTICS_KAFKA_ENABLED: "true"
+      KAFKA_BOOTSTRAP_SERVERS: "${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}:29092,${PLATFORM_PRIVATE_IP}:29093,${PLATFORM_PRIVATE_IP}:29094"
+      CORS_ALLOWED_ORIGINS: "https://100.48.154.224,http://localhost:4200,https://d4ehy77hhb.execute-api.us-east-1.amazonaws.com"
