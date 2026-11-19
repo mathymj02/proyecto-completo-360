@@ -2,7 +2,7 @@
 
 Aplicación de pedidos para estudiar arquitectura cloud y DevOps. Combina un frontend Angular, seis servicios Spring Boot, autenticación con Microsoft Entra ID, un punto de entrada en Amazon API Gateway y procesamiento asíncrono con RabbitMQ. El repositorio contiene el código y una configuración base de Docker Compose; parte de la infraestructura se administra fuera de GitHub.
 
-> **Estado documentado: 18 de noviembre de 2026.** El flujo de compra y la recuperación de la cola de stock se probaron en la EC2 original. El código de Kafka, WebSocket, pagos Webpay y DynamoDB ya está en `main`, pero aún falta desplegarlo y demostrar el flujo completo en AWS. La segunda EC2 ya está creada y tiene Docker y Compose instalados. Consulta [avance de la evaluación](docs/AVANCE-EVALUACION.md) y [configuración AWS y `.env`](docs/CONFIGURACION-AWS-Y-ENV.md).
+> **Estado documentado: 19 de noviembre de 2026.** El flujo de compra y la recuperación de la cola de stock se probaron en la EC2 original. En la segunda EC2 ya funcionan tres brokers Kafka, dos nodos RabbitMQ en clúster, Kafka UI y analítica. Una acción real «Agregar al Carrito» publicó un evento Kafka que analítica consumió (`cartAdds: 1`). WebSocket en el navegador, pagos Webpay, DynamoDB, migración de RabbitMQ y ruta del frontend en API Gateway siguen pendientes de prueba. Consulta [avance de la evaluación](docs/AVANCE-EVALUACION.md) y [configuración AWS y `.env`](docs/CONFIGURACION-AWS-Y-ENV.md).
 
 Para continuar el despliegue de dos instancias, sigue [la guía de dos EC2](docs/OPCION-DOS-EC2.md). La alternativa de [cambiar el tipo de la EC2 original](docs/SIGUIENTE-PASO-EC2.md) quedó bloqueada por la política del laboratorio.
 
