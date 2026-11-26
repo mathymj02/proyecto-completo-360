@@ -23,7 +23,7 @@ import java.util.List;
 public class SecurityConfig {
     @Value("${azure.tenant-id}") private String tenantId;
     @Value("${azure.client-id}") private String clientId;
-    @Value("${analytics.frontend-origin}") private String frontendOrigin;
+    @Value("${analytics.frontend-origins}") private String frontendOrigins;
 
     @Bean
     SecurityFilterChain security(HttpSecurity http) throws Exception {
@@ -53,7 +53,7 @@ public class SecurityConfig {
 
     private UrlBasedCorsConfigurationSource corsSource() {
         CorsConfiguration cors = new CorsConfiguration();
-        cors.setAllowedOrigins(List.of(frontendOrigin));
+        cors.setAllowedOrigins(List.of(frontendOrigins.split("\\s*,\\s*")));
         cors.setAllowedMethods(List.of("GET", "OPTIONS"));
         cors.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

@@ -6,9 +6,9 @@
 // default de "ng build" desde Angular 17+, ver "fileReplacements" en angular.json).
 export const environment = {
   paymentsEnabled: false,
-  analyticsEnabled: false,
-  // Vacio = mismo origen del frontend (requiere proxy WebSocket en Nginx).
-  analyticsWsUrl: '',
+  analyticsEnabled: true,
+  // API Gateway HTTP no reenvía WebSocket; el socket entra por HTTPS de EC2.
+  analyticsWsUrl: 'wss://100.48.154.224/ws/metrics',
   production: true,
 
   azureAd: {

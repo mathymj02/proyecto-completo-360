@@ -25,7 +25,7 @@ analytics:
   dynamodb:
     enabled: ${DYNAMODB_ENABLED:false}
     table: ${DYNAMODB_TABLE:Pedidos360Events}
-  frontend-origin: ${FRONTEND_ORIGIN:http://localhost:4200}
+  frontend-origins: ${FRONTEND_ORIGINS:http://localhost:4200}
 
 azure:
   tenant-id: ${AZURE_TENANT_ID:e5372bf0-c5e3-4286-887c-79069f209c1f}

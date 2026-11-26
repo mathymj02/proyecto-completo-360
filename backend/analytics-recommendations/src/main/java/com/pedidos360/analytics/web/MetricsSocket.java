@@ -33,16 +33,16 @@ public class MetricsSocket extends TextWebSocketHandler {
     @EnableWebSocket
     static class SocketConfig implements WebSocketConfigurer {
         private final MetricsSocket socket;
-        private final String origin;
+        private final String[] origins;
 
-        SocketConfig(MetricsSocket socket, @Value("${analytics.frontend-origin}") String origin) {
+        SocketConfig(MetricsSocket socket, @Value("${analytics.frontend-origins}") String origins) {
             this.socket = socket;
-            this.origin = origin;
+            this.origins = origins.split("\\s*,\\s*");
         }
 
         @Override
         public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-            registry.addHandler(socket, "/ws/metrics").setAllowedOrigins(origin);
+            registry.addHandler(socket, "/ws/metrics").setAllowedOrigins(origins);
         }
     }
 }

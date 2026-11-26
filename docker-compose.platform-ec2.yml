@@ -169,7 +169,7 @@ services:
       DYNAMODB_ENABLED: ${DYNAMODB_ENABLED:-false}
       DYNAMODB_TABLE: ${DYNAMODB_TABLE:-Pedidos360Events}
       AWS_REGION: ${AWS_REGION:-us-east-1}
-      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?Define FRONTEND_ORIGIN en .env}
+      FRONTEND_ORIGINS: "${FRONTEND_ORIGIN:?Define FRONTEND_ORIGIN en .env},https://d4ehy77hhb.execute-api.us-east-1.amazonaws.com"
     networks: [platform-network]
 
 networks:
