@@ -7,6 +7,9 @@ permanecen en .env local; nunca se muestran en la salida.
 
 import base64
 import json
+import sys
+import time
+import uuid
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
@@ -117,6 +120,49 @@ def main():
     print("DLQ: stock_dlq, notifications_dlq, envios_dlq")
     print("Cola topic: orders_audit_queue (orders.#)")
     print("Esto verifica la topología; la migración de los microservicios se prueba aparte")
+
+    if "--smoke-dlq" not in sys.argv:
+        return
+
+    # Esta prueba sólo se permite con las colas principales vacías y sin
+    # consumidores para no tocar órdenes reales de una demostración activa.
+    for queue, _, _ in QUEUE_ROUTES.values():
+        state = api("GET", f"/queues/{VHOST}/{quote(queue)}")
+        if state.get("consumers", 0) or state.get("messages", 0):
+            raise SystemExit(f"Prueba DLQ cancelada: {queue} tiene mensajes o consumidores")
+
+    marker = "SMOKE-DLQ-" + uuid.uuid4().hex[:12]
+    published = api("POST", f"/exchanges/{VHOST}/pedidos_exchange/publish", {
+        "properties": {"delivery_mode": 2},
+        "routing_key": "orden.creada",
+        "payload": json.dumps({"testOnly": True, "marker": marker}),
+        "payload_encoding": "string",
+    })
+    if not published or not published.get("routed"):
+        raise SystemExit("RabbitMQ no enruto el mensaje sintético")
+
+    for queue, dead_queue, _ in QUEUE_ROUTES.values():
+        fetched = []
+        for _ in range(10):
+            fetched = api("POST", f"/queues/{VHOST}/{quote(queue)}/get", {
+                "count": 1, "ackmode": "reject_requeue_false",
+                "encoding": "auto", "truncate": 50000,
+            })
+            if fetched:
+                break
+            time.sleep(0.5)
+        if len(fetched) != 1 or marker not in fetched[0].get("payload", ""):
+            raise SystemExit(f"No se pudo rechazar el mensaje de prueba en {queue}")
+        for _ in range(10):
+            state = api("GET", f"/queues/{VHOST}/{quote(dead_queue)}")
+            if state.get("messages", 0) >= 1:
+                break
+            time.sleep(0.5)
+        else:
+            raise SystemExit(f"No llegó el mensaje rechazado a {dead_queue}")
+        print(f"OK: {queue} -> {dead_queue} por rechazo; marcador {marker}")
+
+    print("Los tres mensajes sintéticos quedan en las DLQ para evidencia visual")
 
 
 if __name__ == "__main__":
