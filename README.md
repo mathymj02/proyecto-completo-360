@@ -6,6 +6,8 @@ Aplicación de pedidos para estudiar arquitectura cloud y DevOps. Combina un fro
 
 Para continuar el despliegue de dos instancias, sigue [la guía de dos EC2](docs/OPCION-DOS-EC2.md). La alternativa de [cambiar el tipo de la EC2 original](docs/SIGUIENTE-PASO-EC2.md) quedó bloqueada por la política del laboratorio.
 
+Para presentar el sistema, usa el [guion breve de defensa](docs/DEFENSA-EVALUACION.md): muestra evidencias observadas y explica los límites de cada prueba.
+
 ## Qué hace el sistema
 
 1. El usuario abre Angular, inicia sesión en Microsoft Entra ID y recibe tokens mediante MSAL.
