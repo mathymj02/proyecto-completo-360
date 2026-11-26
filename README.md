@@ -1,8 +1,8 @@
 # Pedidos360
 
-Aplicación de pedidos para estudiar arquitectura cloud y DevOps. Combina un frontend Angular, seis servicios Spring Boot, autenticación con Microsoft Entra ID, un punto de entrada en Amazon API Gateway y procesamiento asíncrono con RabbitMQ. El repositorio contiene el código y una configuración base de Docker Compose; parte de la infraestructura se administra fuera de GitHub.
+Aplicación de pedidos para estudiar arquitectura cloud y DevOps. Combina un frontend Angular, servicios Spring Boot, identidad Microsoft Entra ID, Amazon API Gateway, RabbitMQ, Kafka, WebSocket y DynamoDB. El repositorio contiene código, configuraciones Docker Compose y guías; API Gateway, IAM, grupos de seguridad y la tabla DynamoDB se administran en AWS.
 
-> **Estado documentado: 26 de noviembre de 2026.** El flujo de compra y la recuperación de la cola de stock se probaron en la EC2 original. En la segunda EC2 funcionan tres brokers Kafka, dos nodos RabbitMQ en clúster, Kafka UI y analítica. Una acción real «Agregar al Carrito» publicó un evento Kafka que analítica consumió (`cartAdds: 1`); un evento sintético de pago elevó `paymentAttempts` y `fraudAlerts` a 1. El frontend cargó e inició sesión mediante la ruta `$default` del API Gateway; CORS devolvió `204`. El proxy de analítica respondió `200` y el WebSocket aceptó una conexión `101` y envió métricas. Falta confirmar visualmente el panel en navegador; Webpay, DynamoDB y la migración de los microservicios al RabbitMQ nuevo siguen pendientes de prueba. Consulta [avance de la evaluación](docs/AVANCE-EVALUACION.md) y [configuración AWS y `.env`](docs/CONFIGURACION-AWS-Y-ENV.md).
+> **Estado documentado: 26 de noviembre de 2026.** El flujo de compra y la recuperación de la cola de stock se probaron en la EC2 original. En la segunda EC2 funcionan tres brokers Kafka, dos nodos RabbitMQ en clúster, Kafka UI y analítica. Una acción real «Agregar al Carrito» publicó un evento Kafka que analítica consumió (`cartAdds: 1`); un evento sintético de pago elevó `paymentAttempts` y `fraudAlerts`. Ese último evento se guardó en la tabla DynamoDB `Pedidos360Events`, comprobada con `Count: 1`. El frontend cargó e inició sesión mediante la ruta `$default` de API Gateway; CORS devolvió `204`. El proxy de analítica respondió `200` y el WebSocket aceptó una conexión `101` y envió métricas. `ms-pago` arrancó con una MariaDB propia, pero una transacción Webpay de integración todavía no se ha demostrado. Tampoco se han migrado los consumidores al RabbitMQ nuevo. Consulta [avance de la evaluación](docs/AVANCE-EVALUACION.md) y [configuración AWS y `.env`](docs/CONFIGURACION-AWS-Y-ENV.md).
 
 Para continuar el despliegue de dos instancias, sigue [la guía de dos EC2](docs/OPCION-DOS-EC2.md). La alternativa de [cambiar el tipo de la EC2 original](docs/SIGUIENTE-PASO-EC2.md) quedó bloqueada por la política del laboratorio.
 
@@ -36,7 +36,7 @@ flowchart LR
     N -.-> SMTP[Servidor SMTP externo]
 ```
 
-El diagrama muestra el despliegue de la demostración. Microsoft Entra ID, API Gateway y Lambda no se crean con el `docker-compose.yml`. La base de datos también cambia según el entorno: algunos archivos versionados apuntan a una instancia RDS anterior; la EC2 de la demostración usa MariaDB mediante una modificación local de Compose.
+El diagrama muestra el flujo de compra heredado en la EC2 original. Microsoft Entra ID, API Gateway y Lambda no se crean con `docker-compose.yml`. La base de datos también cambia según el entorno: algunos archivos versionados apuntan a una instancia RDS anterior; la EC2 de la demostración usa MariaDB mediante una modificación local de Compose. La nueva plataforma de Kafka, analítica y pagos vive en una segunda EC2, descrita más abajo.
 
 ### Componentes
 
@@ -51,6 +51,10 @@ El diagrama muestra el despliegue de la demostración. Microsoft Entra ID, API G
 | `envios-service` · 8086 | Consume la orden y genera una guía de despacho | [`backend/envios-service/`](backend/envios-service/) |
 | RabbitMQ | Exchange, colas y entrega de mensajes AMQP | [`RabbitMQConfig.java`](backend/orders-service/src/main/java/com/pedidos360/orders/config/RabbitMQConfig.java), [`docker-compose.yml`](docker-compose.yml) |
 | API Gateway + Lambda | Rutas públicas/protegidas y autorización previa | Configuración en AWS; hay un proyecto de código fuente en [`backend/authorizer-lambda/`](backend/authorizer-lambda/) |
+| Kafka y ZooKeeper | Tres brokers y tres nodos de coordinación; topics replicados para navegación e intentos de pago | [`docker-compose.platform-ec2.yml`](docker-compose.platform-ec2.yml), [`scripts/kafka-topics.sh`](scripts/kafka-topics.sh) |
+| `analytics-recommendations` · 8088 | Consume Kafka, agrega métricas, recomienda productos y emite WebSocket | [`backend/analytics-recommendations/`](backend/analytics-recommendations/), [guía de métricas](docs/METRICAS-WEBSOCKET.md) |
+| DynamoDB | Guarda los eventos analíticos por `eventId` mediante el rol temporal de la EC2 | Cliente en [`DynamoEventStore.java`](backend/analytics-recommendations/src/main/java/com/pedidos360/analytics/service/DynamoEventStore.java); tabla e IAM en AWS |
+| `ms-pago` · 8087 | Inicia y confirma Webpay de integración; registra intentos en MariaDB propia y publica eventos Kafka | [`backend/ms-pago/`](backend/ms-pago/), [guía de pagos](docs/PAGOS-WEBPAY.md) |
 
 ## Identidad y autorización: OAuth 2.0, OIDC y MSAL
 
@@ -98,23 +102,43 @@ POST /api/v1/orders → orders-service → pedidos_exchange (orden.creada)
 
 En la prueba de recuperación se detuvo `catalogo-api`, se efectuó una compra y la consola de RabbitMQ mostró **1 mensaje Ready** en `stock_queue`. Al encender el servicio, la cola bajó a **0** y el log registró `ORD-39429633` y el nuevo stock de “Monitor 24 pulgadas” en **14 unidades**. Esto demuestra la entrega diferida en esa prueba. El consumidor de stock ejecuta la actualización dentro de una transacción y propaga los errores, evitando confirmar como exitosa una actualización fallida.
 
-El panel de RabbitMQ está en el puerto `15672` del host de demostración (`http://100.48.154.224:15672/`), si la instancia y la regla de red están activas. `Ready` significa pendiente de entrega; `Unacked`, entregado y aún sin confirmación del consumidor. La [guía de fiabilidad de RabbitMQ](https://www.rabbitmq.com/docs/reliability) explica confirmaciones y acknowledgements.
+El panel del RabbitMQ anterior está en el puerto `15672` del host de demostración (`http://100.48.154.224:15672/`), si la instancia y la regla de red están activas. `Ready` significa pendiente de entrega; `Unacked`, entregado y aún sin confirmación del consumidor. La [guía de fiabilidad de RabbitMQ](https://www.rabbitmq.com/docs/reliability) explica confirmaciones y acknowledgements.
 
-Las colas durables y los mensajes persistentes ayudan frente a reinicios del broker, pero no sustituyen una política de respaldo. La instancia anterior usaba un volumen RabbitMQ anónimo cuya persistencia aún debe comprobarse. El código local nuevo define DLQ para stock, notificaciones y envíos y un marcador SQL para evitar doble descuento de stock por redelivery; faltan pruebas con el broker desplegado. La guía de envíos continúa en memoria y desaparece si se reinicia ese servicio. El código local de notificaciones propaga fallos SMTP para que la política DLX pueda derivarlos a la DLQ; la imagen anterior desplegada todavía no incorpora ese cambio.
+Las colas durables y los mensajes persistentes ayudan frente a reinicios del broker, pero no sustituyen una política de respaldo. En la EC2 nueva se verificaron dos nodos en un clúster, tres colas principales, tres DLQ, un exchange directo y uno topic. Mensajes sintéticos rechazados llegaron a las tres DLQ. Los microservicios de la compra todavía consumen el broker anterior; la topología nueva no demuestra por sí sola que una orden real llegue al clúster nuevo. La guía de envíos continúa en memoria y desaparece si se reinicia ese servicio.
+
+## Kafka, analítica, WebSocket y DynamoDB
+
+La EC2 de plataforma ejecuta tres nodos ZooKeeper y tres brokers Kafka. Los topics `navegacion-productos` e `intentos-pago` tienen tres particiones y factor de réplica tres; la comprobación de los brokers devolvió `[1, 2, 3]` y las particiones mostraron las tres réplicas sincronizadas. Una **partición** distribuye los registros de un topic; una **réplica** conserva una copia para tolerar la caída de un broker. Kafka UI permite inspeccionar brokers, topics y offsets. [Guía de despliegue](docs/OPCION-DOS-EC2.md).
+
+```text
+carrito-api --ADD_TO_CART--> navegacion-productos --┐
+ms-pago ----PAYMENT_ATTEMPT--> intentos-pago ---------┼--> analytics-recommendations
+                                                     ├--> métricas REST y WebSocket
+                                                     └--> Pedidos360Events (DynamoDB)
+```
+
+El consumidor de analítica guarda primero el evento en DynamoDB, después actualiza los contadores en memoria y emite una instantánea por WebSocket. Se observaron eventos reales del carrito y un intento de pago **sintético**. Este último aumentó `paymentAttempts` y `fraudAlerts` y dejó un ítem en DynamoDB. Los contadores en memoria vuelven a cero al reiniciar analítica; DynamoDB conserva los eventos, pero el servicio aún no reconstruye los contadores desde la tabla al arrancar. [Métricas y WebSocket](docs/METRICAS-WEBSOCKET.md).
+
+## Webpay Plus de integración
+
+`ms-pago` usa una MariaDB propia para los intentos. Recibe un JWT de Entra ID, solicita a Webpay un token de pago y envía al navegador a la página de Transbank. Webpay devuelve el control a una ruta del backend que acepta GET o POST, según el resultado; este reenvía a Angular. Solo después de confirmar estado `AUTHORIZED`, monto, orden y código de respuesta se publica la orden en RabbitMQ. Cada transición publica además un evento en Kafka. El antifraude de demostración bloquea el cuarto intento con el mismo **alias** en diez segundos; no recibe el número real de la tarjeta. El botón de pago del frontend sigue desactivado hasta probar una transacción de extremo a extremo en el ambiente de integración. [Flujo y límites](docs/PAGOS-WEBPAY.md).
 
 ## Repositorio y despliegue
 
 ```text
-backend/              Seis servicios Spring Boot y proyecto del authorizer
+backend/              Servicios Spring Boot, analítica, pagos y proyecto del authorizer
 frontend/             Aplicación Angular, configuración MSAL y Nginx
 docker-compose.yml    Topología Docker base
+docker-compose.platform-ec2.yml    Clústeres, pagos y analítica en la segunda EC2
+scripts/              Preparación, comprobación y operaciones de los servicios
+docs/                 Guías de arquitectura, AWS, pagos, métricas y evaluación
 amplify.yml           Configuración alternativa de build del frontend
 postman/              Colección heredada; no cubre necesariamente las seis API
 ```
 
 La demostración actual se ejecutó en **Amazon EC2** con Docker Compose: servicios Java, RabbitMQ, base de datos y frontend servido por Nginx. En AWS se configuraron por separado API Gateway, sus rutas, CORS y Lambda Authorizer. `amplify.yml` muestra una opción para compilar el frontend en Amplify, pero el frontend de la prueba se sirvió desde EC2.
 
-La copia de EC2 tiene cambios locales de HTTPS, certificados de Nginx y `environment.prod.ts`. El código nuevo prepara MariaDB y variables en `.env.example`, pero la EC2 aún no se ha reconciliado con esta copia. Por ello, `docker compose up --build` sobre un clon nuevo todavía no reproduce automáticamente la demostración. Revisa hosts y credenciales siguiendo la [guía de configuración](docs/CONFIGURACION-AWS-Y-ENV.md). No subir claves privadas TLS, archivos `.env` reales ni contraseñas.
+La EC2 original conserva cambios locales de HTTPS y certificados de Nginx; su checkout antiguo también contiene ajustes propios que no se deben sobrescribir con un `git pull` indiscriminado. Se usa un clon limpio separado para recibir los cambios de `main` y montar la configuración Nginx versionada. El segundo clon usa `.env` local ignorado para IP privadas, contraseñas de RabbitMQ y MariaDB de pagos, y credenciales públicas de Webpay de integración. `LabInstanceProfile` aporta credenciales temporales AWS a DynamoDB sin guardar claves de acceso en `.env`. Revisa hosts y secretos en la [guía de configuración](docs/CONFIGURACION-AWS-Y-ENV.md). No subir claves privadas TLS, `.env` reales ni contraseñas.
 
 Para inspeccionar la versión en ejecución desde la carpeta del proyecto de la EC2:
 
@@ -135,6 +159,6 @@ Para compilar el código localmente se necesitan Java 17, Maven, Node.js compati
 | Compra y RabbitMQ | Cola de stock `Ready: 1` con catálogo detenido; `Ready: 0` y stock actualizado al reiniciarlo | Probar fallos, duplicados, persistencia del broker y colas de error |
 | Seguridad | MSAL y validación JWT en tres API; authorizer configurado en AWS | Corregir, compilar y auditar Lambda; verificar firma, issuer, audience y permisos; cerrar accesos directos indebidos |
 | Operación | Docker Compose en EC2 y base MariaDB configurada localmente | Variables de entorno/secretos, TLS confiable, CI, pruebas automatizadas, observabilidad y backups |
-| Nueva evaluación | Kafka, pagos, analítica, WebSocket y DynamoDB codificados localmente; varias compilaciones y pruebas unitarias pasaron | Desplegar infraestructura, probar integración completa y documentar evidencia según [avance](docs/AVANCE-EVALUACION.md) |
+| Nueva evaluación | Kafka, analítica y WebSocket desplegados; evento de pago sintético guardado en DynamoDB; `ms-pago` y MariaDB propia arrancaron | Probar Webpay de extremo a extremo, migrar consumidores RabbitMQ y capturar evidencia visual según [avance](docs/AVANCE-EVALUACION.md) |
 
 Este README separa **código versionado**, **configuración externa observada** y **trabajo pendiente**. El objetivo es que el proyecto sirva tanto para explicar el flujo en una evaluación como para presentar un portafolio técnico verificable, sin atribuir al repositorio capacidades que todavía dependen de una configuración manual o de una prueba no realizada.
