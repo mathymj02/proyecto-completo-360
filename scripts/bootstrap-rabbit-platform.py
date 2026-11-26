@@ -121,7 +121,38 @@ def main():
     print("Cola topic: orders_audit_queue (orders.#)")
     print("Esto verifica la topología; la migración de los microservicios se prueba aparte")
 
-    if "--smoke-dlq" not in sys.argv:
+    if "--smoke-dlq" not in sys.argv and "--resume-smoke-dlq" not in sys.argv:
+        return
+
+    def wait_for_dead_letter(dead_queue):
+        # Las estadísticas del plugin Management se actualizan de forma
+        # periódica; el mensaje puede estar en la DLQ antes de verse aquí.
+        for _ in range(30):
+            state = api("GET", f"/queues/{VHOST}/{quote(dead_queue)}")
+            if state.get("messages", 0) >= 1:
+                return
+            time.sleep(1)
+        raise SystemExit(f"No llegó el mensaje rechazado a {dead_queue}")
+
+    if "--resume-smoke-dlq" in sys.argv:
+        queue = "envios_queue"
+        state = api("GET", f"/queues/{VHOST}/{queue}")
+        if state.get("consumers", 0) or state.get("messages", 0) != 1:
+            raise SystemExit("Reanudación cancelada: envios_queue no contiene un único mensaje sin consumidor")
+        peek = api("POST", f"/queues/{VHOST}/{queue}/get", {
+            "count": 1, "ackmode": "ack_requeue_true",
+            "encoding": "auto", "truncate": 50000,
+        })
+        if len(peek) != 1 or '"testOnly": true' not in peek[0].get("payload", ""):
+            raise SystemExit("Reanudación cancelada: el mensaje no es la prueba sintética")
+        fetched = api("POST", f"/queues/{VHOST}/{queue}/get", {
+            "count": 1, "ackmode": "reject_requeue_false",
+            "encoding": "auto", "truncate": 50000,
+        })
+        if len(fetched) != 1 or fetched[0].get("payload") != peek[0].get("payload"):
+            raise SystemExit("No se pudo confirmar el rechazo del mensaje sintético de envíos")
+        wait_for_dead_letter("envios_dlq")
+        print("OK: envios_queue -> envios_dlq por rechazo sintético")
         return
 
     # Esta prueba sólo se permite con las colas principales vacías y sin
@@ -153,13 +184,7 @@ def main():
             time.sleep(0.5)
         if len(fetched) != 1 or marker not in fetched[0].get("payload", ""):
             raise SystemExit(f"No se pudo rechazar el mensaje de prueba en {queue}")
-        for _ in range(10):
-            state = api("GET", f"/queues/{VHOST}/{quote(dead_queue)}")
-            if state.get("messages", 0) >= 1:
-                break
-            time.sleep(0.5)
-        else:
-            raise SystemExit(f"No llegó el mensaje rechazado a {dead_queue}")
+        wait_for_dead_letter(dead_queue)
         print(f"OK: {queue} -> {dead_queue} por rechazo; marcador {marker}")
 
     print("Los tres mensajes sintéticos quedan en las DLQ para evidencia visual")
