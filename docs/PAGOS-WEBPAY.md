@@ -15,8 +15,10 @@ Transbank y tarjetas de prueba descritas en su documentación.
    el intento en su propia MariaDB y solicita a Webpay un token y una URL.
 3. El navegador envía el token a la página de Webpay. La tarjeta se introduce
    solo allí. El backend no recibe PAN ni CVV.
-4. Webpay regresa a `/payment-return/:paymentId` del mismo origen donde
-   empezó la compra. Angular envía `token_ws` a `ms-pago`, que confirma la
+4. Webpay regresa a `/api/v1/payments/return/:paymentId` del mismo origen donde
+   empezó la compra. Esta ruta acepta GET y POST y responde 303 hacia la
+   pantalla Angular. El token viaja en el fragmento URL, que el navegador no
+   envía al servidor frontend. Angular envía `token_ws` a `ms-pago`, que confirma la
    transacción con Webpay y compara ID, monto, estado y código de respuesta.
 5. Solo si el pago queda `AUTHORIZED`, Angular publica la orden en
    `orders-service`. Este envía el evento a RabbitMQ; catálogo, notificaciones

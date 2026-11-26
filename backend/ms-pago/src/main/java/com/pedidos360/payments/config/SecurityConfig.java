@@ -14,6 +14,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
@@ -30,7 +31,10 @@ public class SecurityConfig {
         return http.csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.GET, "/api/v1/payments/return/*").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/payments/return/*").permitAll()
+                        .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> {}))
                 .build();
     }
@@ -55,7 +59,11 @@ public class SecurityConfig {
         cors.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
         cors.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", cors);
+        // El retorno de Webpay es una navegación del navegador desde otro origen.
+        // No es una llamada AJAX: CORS no debe rechazar su POST de cancelación.
+        source.registerCorsConfiguration("/api/v1/payments", cors);
+        source.registerCorsConfiguration("/api/v1/payments/*", cors);
+        source.registerCorsConfiguration("/api/v1/payments/*/commit", cors);
         return source;
     }
 }

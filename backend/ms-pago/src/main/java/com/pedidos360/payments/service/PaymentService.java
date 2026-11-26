@@ -52,7 +52,7 @@ public class PaymentService {
             return new StartResult(paymentId, "BLOCKED", null, null);
         }
         try {
-            String returnUrl = frontendBaseUrl + "/payment-return/" + paymentId;
+            String returnUrl = frontendBaseUrl + "/api/v1/payments/return/" + paymentId;
             WebpayClient.StartResult webpayResult = webpay.create(paymentId, userId,
                     request.amount(), returnUrl);
             payment.setWebpayToken(webpayResult.token());

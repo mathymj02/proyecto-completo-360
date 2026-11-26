@@ -35,7 +35,7 @@ export class PaymentReturnComponent implements OnInit {
 
   ngOnInit(): void {
     const paymentId = this.route.snapshot.paramMap.get('paymentId');
-    const token = this.route.snapshot.queryParamMap.get('token_ws');
+    const token = new URLSearchParams(this.route.snapshot.fragment || '').get('token_ws');
     const raw = sessionStorage.getItem('pedidos360_pending_order');
     if (!paymentId || !token || !raw) {
       this.message = 'Pago cancelado o faltan datos de la compra. Revisa el estado antes de intentarlo otra vez.';
