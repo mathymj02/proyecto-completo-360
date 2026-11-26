@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 
@@ -62,7 +63,9 @@ public class DynamoEventStore {
     static class ClientConfig {
         @Bean(destroyMethod = "close")
         DynamoDbClient dynamoDbClient() {
-            return DynamoDbClient.create();
+            return DynamoDbClient.builder()
+                    .httpClientBuilder(UrlConnectionHttpClient.builder())
+                    .build();
         }
     }
 }
