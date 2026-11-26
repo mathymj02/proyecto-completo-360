@@ -142,16 +142,41 @@ services:
       - ./infra/rabbitmq/rabbitmq-platform.conf:/etc/rabbitmq/rabbitmq.conf:ro
     networks: [platform-network]
 
+  mariadb-pagos:
+    image: mariadb:10.11
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      MARIADB_DATABASE: ${PAYMENTS_DB_NAME:-pedidos360_pagos}
+      MARIADB_USER: ${PAYMENTS_DB_USERNAME:-pagos}
+      MARIADB_PASSWORD: ${PAYMENTS_DB_PASSWORD:?Define PAYMENTS_DB_PASSWORD en .env}
+      MARIADB_ROOT_PASSWORD: ${PAYMENTS_DB_ROOT_PASSWORD:?Define PAYMENTS_DB_ROOT_PASSWORD en .env}
+    volumes: [mariadb-pagos-data:/var/lib/mysql]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [platform-network]
+
   ms-pago:
     build: ./backend/ms-pago
     restart: unless-stopped
     mem_limit: 768m
-    depends_on: [kafka-1, kafka-2, kafka-3]
+    depends_on:
+      mariadb-pagos:
+        condition: service_healthy
+      kafka-1:
+        condition: service_started
+      kafka-2:
+        condition: service_started
+      kafka-3:
+        condition: service_started
     ports: ["${PLATFORM_PRIVATE_IP:?Define PLATFORM_PRIVATE_IP en .env}:8087:8087"]
     environment:
-      DB_URL: "jdbc:mariadb://${CORE_PRIVATE_IP:?Define CORE_PRIVATE_IP en .env}:3306/${DB_NAME:-pedidos360}"
-      DB_USERNAME: ${DB_USERNAME:?Define DB_USERNAME en .env}
-      DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
+      DB_URL: "jdbc:mariadb://mariadb-pagos:3306/${PAYMENTS_DB_NAME:-pedidos360_pagos}"
+      DB_USERNAME: ${PAYMENTS_DB_USERNAME:-pagos}
+      DB_PASSWORD: ${PAYMENTS_DB_PASSWORD:?Define PAYMENTS_DB_PASSWORD en .env}
       KAFKA_BOOTSTRAP_SERVERS: "kafka-1:9092,kafka-2:9092,kafka-3:9092"
       CARD_HASH_SALT: ${CARD_HASH_SALT:?Define CARD_HASH_SALT en .env}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:?Define FRONTEND_BASE_URL en .env}
@@ -188,3 +213,4 @@ volumes:
   kafka-3-data:
   rabbitmq-1-data:
   rabbitmq-2-data:
+  mariadb-pagos-data:
