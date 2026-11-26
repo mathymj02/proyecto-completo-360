@@ -1,6 +1,6 @@
 # Servir Angular mediante el API Gateway existente
 
-**Estado 26-11-2026:** la HTTP API `d4ehy77hhb` en `us-east-1` tiene la ruta `$default` (`5gbrcmm`) sin autorizador, conectada a la integración HTTP_PROXY `ieueaxa` de `http://100.48.154.224`. El stage `$default` despliega cambios automáticamente. Se verificó `200` para `/` y `/dashboard` a través del gateway y `401` sin token para la ruta protegida del catálogo. Se agregó el origen HTTPS del gateway a CORS y se conservaron los orígenes HTTPS de la EC2 y HTTP de desarrollo local. El preflight de las rutas API sin ruta `OPTIONS` explícita recibió `405` desde Nginx; la respuesta `204` queda preparada en esta configuración y pendiente de despliegue y verificación.
+**Estado 26-11-2026:** la HTTP API `d4ehy77hhb` en `us-east-1` tiene la ruta `$default` (`5gbrcmm`) sin autorizador, conectada a la integración HTTP_PROXY `ieueaxa` de `http://100.48.154.224`. El stage `$default` despliega cambios automáticamente. Se verificó `200` para `/` y `/dashboard` a través del gateway y `401` sin token para la ruta protegida del catálogo. Se agregó el origen HTTPS del gateway a CORS y se conservaron los orígenes HTTPS de la EC2 y HTTP de desarrollo local. Después de recrear el contenedor Nginx, el preflight de las rutas API devolvió `204` con los encabezados CORS esperados. El usuario confirmó que el catálogo carga desde la URL anterior y que pudo iniciar sesión desde la URL del gateway.
 
 ## Cómo queda el recorrido
 
